@@ -733,21 +733,15 @@ Sous Virtual Box:
 * Premier Boot / Installation
   * Réseau : Activer les 2 cartes Réseau --> Définir l'ip 192.168
   * Installation Destination : Configurer son partionnement. (On peut se faire aider par l'installeur).
-> Personnalisé (On attends ... trop longtps !)
-
+```
+Personnalisé (On attends ... trop longtps !)
 > LVM : Oui
-
 > / : 5 Gio
-
 > /home : 5 Gio
-
-
 > /boot/efi : 600 Mio
-
 > /boot : 1024 Mio
-
 > swap : 2 Gio
-
+```
   * Mirroir et sources : Installation Minimal / Serveur
 
 #### Post Configuration
@@ -773,7 +767,8 @@ Normalement, la dernière connexion ssh ne doit pas demander de mot de pass.
 On peut vérifier l'échange de clef en augmentant la verbosité de ssh : `ssh -vvv admin@192.168.56.10`
 
 Et enfin, on va modifier la conf ssh pour ne plus autoriser root à se connecter par ce biais:
-`# vim /etc/sshd_config` On modifier la ligne "PermitRootLogin"
+`# vim /etc/sshd_config`. 
+On modifie la ligne "PermitRootLogin"
 ```shell
 #LoginGraceTime 2m
 #PermitRootLogin yes
