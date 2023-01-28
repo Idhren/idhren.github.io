@@ -14,11 +14,11 @@ Exemple de linux : Ubuntu, Debian.
 
 Une page pour aller plus loin dans la différence : [Unix Vs Linux: Quelle est la différence entre UNIX et Linux - Autre](https://fre.myservername.com/unix-vs-linux-what-is-difference-between-unix#:~:text=Linux%20fait%20r%C3%A9f%C3%A9rence%20au%20noyau,de%20syst%C3%A8mes%20d'exploitation%20d%C3%A9riv%C3%A9s.)
 
-### Différentes distributions
+## Différentes distributions
 
 Source : Wikipedia
 
-#### Historique
+### Historique
 
 * Debian
   
@@ -56,7 +56,7 @@ Source : Wikipedia
   
   * Aimée par les barbus
 
-#### Enormément d'enfants
+### Enormément d'enfants
 
 Fedora, Ubuntu, Mint, Kali, ...
 
@@ -64,9 +64,9 @@ Fedora, Ubuntu, Mint, Kali, ...
 
 [DistroWatch.com: Put the fun back into computing. Use Linux, BSD.](https://distrowatch.com/dwres.php?resource=family-tree)
 
-### Les bases
+## Les bases
 
-#### Dossiers d'arborescence
+### Dossiers d'arborescence
 
 Par défaut, chaque répertoire à son utilisation/rôle. Les principaux à retenir :
 
@@ -88,7 +88,7 @@ Par défaut, chaque répertoire à son utilisation/rôle. Les principaux à rete
 
 Pour aller plus loin dans le détail : [Arborescence du système Linux - Wiki - Wiki](https://www.linuxtricks.fr/wiki/arborescence-du-systeme-linux)
 
-#### Systèmes de fichiers
+### Systèmes de fichiers
 
 <img src="https://static.javatpoint.com/linux/images/linux-file-system2.png" title="" alt="Linux File System" width="608">
 
@@ -112,7 +112,7 @@ Les plus répandus et connus sont les suivants.
 
 * Btrfs
 
-#### Les shells
+### Les shells
 
 Un "shell" permet le lien entre l'utilisateur et le noyau : 
 
@@ -128,9 +128,9 @@ Chaque utilisateur d'un système linux possède un shell par défaut : /bin/bash
 
 Pareil pour les scripts, le "shebang" en début de chaque script permet d'indiquer au système le langage utilisé (#!/bin/bash)
 
-### Commandes de bases
+## Commandes de bases
 
-#### Must have
+### Must have
 
 * MAN ! : RTFM : Commande a connaitre par coeur. Permet d'avoir l'aide de n'importe quelle commande (y compris elle même)
 
@@ -156,7 +156,7 @@ Pareil pour les scripts, le "shebang" en début de chaque script permet d'indiqu
 
 * top : Permet de voir rapidement les conso de cpu/mémoire sous forme de graph
 
-#### Des commandes qui lancent des commandes:
+### Des commandes qui lancent des commandes:
 
 * lsscsi : Liste les périphériques dit "SCSI". Ca concerne le bus lui même, donc les disques durs aussi, pas seulement les vieilles cartes des années 50
 
@@ -168,15 +168,15 @@ Pareil pour les scripts, le "shebang" en début de chaque script permet d'indiqu
 
 * lscpu : Récupère des infos sur le CPU. On peut aussi les avoir avec un `cat /proc/cpuinfo`
 
-#### Et des commandes qui permettent de gérer les soft
+### Et des commandes qui permettent de gérer les soft
 
 * dnf, apt, yast, pacam, pip, etc ... :
 
 * make, cmake, configure, etc ... 
 
-### Les commandes "système"
+## Les commandes "système"
 
-#### DNF
+### DNF
 
 Nouveau nom de Yum. Equivalent à apt/aptitude sous debian.
 
@@ -295,7 +295,7 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-8
 gpgcheck=1
 ```
 
-#### Systemd
+### Systemd
 
 Nouveau gestionnaire de service de linux. Remplace init.d. C'est un environnement couteau suisse qui permet de faire plein de choses. Wikipedia parle de "suite logicielle"
 
@@ -364,7 +364,7 @@ RestartSec=42s
 WantedBy=multi-user.target
 ```
 
-#### Nmcli - Network Manager
+### Nmcli - Network Manager
 
 C'est l'outil de configuration réseau. 3 manière de faire:
 
@@ -411,7 +411,7 @@ enp0s8  ethernet  connecté  enp0s8
 lo      loopback  non-géré  --
 ```
 
-#### LVM -Logical Volume Manager
+### LVM -Logical Volume Manager
 
 Permet la création de volume logique. Il ne remplace par la notion de raid et ne gère pas les backup. Il est utilisé par défaut sous linux.
 
@@ -555,7 +555,7 @@ Ici, notre LV "root" est monté sur /
 /dev/mapper/almalinux-root on / type xfs (rw,relatime,seclabel,attr2,inode64,logbufs=8,logbsize=32k,noquota)
 ```
 
-### Pare-feu
+## Pare-feu
 
 Sous Linux (en tout cas Debian et RHEL), le parefeu est géré par Netfilter.
 
@@ -565,7 +565,7 @@ Anciennement on utilise iptables. Soit en modifiant directement le fichier `/etc
 
 De plus en plus, on utilise *firewalld* sous RHEL, *ufw* sous Debian.
 
-#### Avec Iptables
+### Avec Iptables
 
 Exemple en créant une règle pour autoriser le ssh : 
 
@@ -599,7 +599,7 @@ Chain OUTPUT (policy ACCEPT)
 target     prot opt source               destination
 ```
 
-#### Avec firewalld
+### Avec firewalld
 
 (source: [Comment configurer un pare-feu en utilisant firewalld sur CentOS 8 | DigitalOcean](https://www.digitalocean.com/community/tutorials/how-to-set-up-a-firewall-using-firewalld-on-centos-8-fr) )
 
@@ -647,9 +647,9 @@ Le principe de fonctionnement, de base, simplifié est le suivant :
 # firewall-cmd --zone=work --add-service=http --permanent
 ```
 
-### Les fichiers !
+## Les fichiers !
 
-#### Les logs
+### Les logs
 
 - `/var/log/messages`
 
@@ -659,13 +659,13 @@ En gros, si il y a 2 fichiers à retenir, c'est ceux là. Ils contiennent 90% de
 
 Les appli iront loguer soit dans messages, soit dans leurs fichiers à elles (ie `/var/log/httpd/access.log`)
 
-####  Compte, groupe et mdp
+###  Compte, groupe et mdp
 
 * passwd, shadow et groups 
 
 Les 3 fichiers permettant de stocker les informations concernant les utilisateurs, groupes et mdp.
 
-#### Et du coup, les permissions ? 777 ?
+### Et du coup, les permissions ? 777 ?
 
 `-rw-r--r--` : 644. on compte en binaire
 
@@ -701,6 +701,6 @@ Le propriétaire à les droit de lecture (r) et d'écriture (w). Le groupe "root
 
 Les commandes `chmod`et `chown`permettent de modifier les droits.
 
-#### La FSTAB
+### La FSTAB
 
 Le fichier `/etc/fstab`est celui qui permet de connaitre au système comment sont monter les différents filesystem.
