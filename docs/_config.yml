@@ -3,7 +3,8 @@ description: Test Desc
 remote_theme: carlosperate/jekyll-theme-rtd
 
 # Theme settings:
-site_author: Carlos Pereira Atencio
+site_author: Romain Chatillon
+repo_url: https://github.com/Idhren/idhren.github.io
 #repo_url: "https://github.com/carlosperate/jekyll-theme-rtd"
 edit_on_github: true
 github_docs_folder: true
