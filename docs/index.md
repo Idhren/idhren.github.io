@@ -785,7 +785,7 @@ Pour récupérer les droit root, on "Switch User" :
 $ su - 
 ```
 
-##### Exercice pratique - LVM
+#### Exercice pratique - LVM
 
 Sous Virtual box, on va créer un nouveau volume qu'on attache à notre serveur.
 
@@ -822,6 +822,21 @@ On peut aussi agrandir notre volume HOME:
 
 On n'oublie pas de redimensionner le FS lui aussi, sinon le système ne comprendra pas.
 
+### VM Cliente
+
+On détaillera très peu l'installation de la VM cliente ici.
+
+Le but est d'avoir une VM avec interface graphique qui permette de confirmer le fonctionnement de nos serveurs.
+
+On l'appelera "alma-client" avec les paramêtre suivant:
+
+* Type RHEL
+* Stockage : 20Go
+* 1 seule carte réseaux (en dhcp)
+* RAM : 2048
+* EFI Activé
+* Partitionnement automatique
+* Mirroir et source : Poste de travail
 
 # Installation DHCPD
 ## Prérequis
