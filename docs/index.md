@@ -60,7 +60,7 @@ Source : Wikipedia
 
 Fedora, Ubuntu, Mint, Kali, ...
 
-![periodic-table-distro](../images/periodic-table-of-distro.png)
+![periodic-table-distro](/images/periodic-table-of-distro.png)
 
 [DistroWatch.com: Put the fun back into computing. Use Linux, BSD.](https://distrowatch.com/dwres.php?resource=family-tree)
 
