@@ -26,7 +26,7 @@ Source : Wikipedia
   
   * Très répandu.
   
-  * pkg / apt
+  * dpkg / apt
   
   * debian-installer
 
@@ -713,6 +713,13 @@ Pour les quelques TP qui seront présentés ci dessous, on partira sur une infra
 
 L'iso de déploiement utilisée dans les 2 cas est la version minimaliste disponible ici :  [Alma - x86](http://mirror.crexio.com/almalinux/8.7/isos/x86_64/)
 
+On aura donc : 
+* Une VM "Serveur" sous Almalinux avec 2 cartes réseaux. Une "NATée", l'autre sur un sous réseau hôte, privé.
+  * Cette VM serveur aura l'ip 192.168.56.10/24 sur le réseau privé.
+  * Elle fera office de serveur DHCP + DNS
+  * On se connecte à cette VM depuis l'hyperviseur en tant qu'utilisateur et on y fait une élévation de droit avec un `su -` (Pas de connexion root@ mais pas de sudo non plus ...)
+* Une VM "Cliente" sous Almalinux également. Une seule carte réseau et un environnement Gnome. Cette VM simulera un poste client connecté au SI.
+
 ### VM Serveurs
 #### Premier Déploiement
 Sous Virtual Box:
@@ -785,7 +792,7 @@ Pour récupérer les droit root, on "Switch User" :
 $ su - 
 ```
 
-##### Exercice pratique - LVM
+#### Exercice pratique - LVM
 
 Sous Virtual box, on va créer un nouveau volume qu'on attache à notre serveur.
 
@@ -822,17 +829,29 @@ On peut aussi agrandir notre volume HOME:
 
 On n'oublie pas de redimensionner le FS lui aussi, sinon le système ne comprendra pas.
 
+### VM Cliente
+
+On détaillera très peu l'installation de la VM cliente ici.
+
+Le but est d'avoir une VM avec interface graphique qui permette de confirmer le fonctionnement de nos serveurs.
+
+On l'appelera "alma-client" avec les paramêtre suivant:
+
+* Type RHEL
+* Stockage : 20Go
+* 1 seule carte réseaux (en dhcp)
+* RAM : 2048
+* EFI Activé
+* Partitionnement automatique
+* Mirroir et source : Poste de travail
 
 # Installation DHCPD
-## Prérequis
 
-En prérequis on part du principe qu'on à déjà a disposition:
-* Une VM "Serveur" sous Almalinux avec 2 cartes réseaux. Une "NATée", l'autre sur un sous réseau hôte, privé.
-* Cette VM serveur aura l'ip 192.168.56.10/24 sur le réseau privé.
-* Elle fera office de serveur DHCP + DNS
-* On se connecte à cette VM depuis l'hyperviseur en tant qu'utilisateur et on y fait une élévation de droit avec un `su -` (Pas de connexion root@ mais pas de sudo non plus ...)
+Un serveur DHCP à pour rôle principal de fournir une adresse IP aux client qui démarre sur son réseau.
 
-Le sous réseau hôte sera une simulation de réseau d'entreprise avec les différentes services de bases.
+Il peut également fournir des informations utile à la configuration et au démarrage des clients (Adresse du serveur DNS, Adresse du serveur kickstart/déploiement/pxe, etc ...)
+
+Il écoute sur le port tcp 67. Le client utilisera également le port 68.
 
 ## Côté Serveur
 
@@ -911,10 +930,56 @@ lease 192.168.50.100 {
 server-duid "\000\001\000\001+Q\344T\010\000'1\001\240";
 ```
 
-
-
-
-
-
 # Installation DNS
+
+Installer un serveur DNS va demander plus de boulot qu'un DHCP. Les 2 vont cependant travailler ensemble. DHCP fournissant aux client les information de connexion pour contacter le serveur DNS.
+
+En théorie, on install 2 serveurs DNS. Un primaire, et un secondaire, mais dans notre cas on se contentera d'un seul serveur.
+
+## La base
+
+```shell
+# dnf install bind9
+# vim /etc/named.conf
+```
+
+Bind (Berkeley Internet Name Domain) est le sserveur DNS le plus commun. Il a été créé par des étudiant de l'université de Berkeley.
+
+Il écoute sur le port tcp 53.
+
+Son fichier de configuration principal est `/etc/named.conf`
+
+On va commencer par faire écouter notre serveur sur son IP du réseau et lui autoriser à répondre aux requêtes de ce même réseau.
+Modifiez donc les lignes suivantes:
+
+```shell
+options {
+  listen-on port 53 { 127.0.0.1; 192.168.56.10;};o
+# listen-on-v6 port 53 { ::1; };
+  [...]
+  allow-query { localhost; 192.168.56.0; };
+  [...]
+```
+
+Avec un serveur secondaire, il aurait fallu rajouter l'options `allow-transfer { $SERVER_IP; };`
+
+A la fin du fichier, ajouter également la ligne `include "/etc/named.conf.local"`. Ce fichier contiendra la définition de notre (nos?) zone(s) DNS.
+
+On créer donc ce fichier dans lequel on déclare nos zones dites "forward" et "reverse" :
+
+`vim /etc/named.conf.local`
+```shell
+zone "adsillh.local" {
+  type master;
+  file "/etc/named/zones/db.adsillh.local";
+};
+
+zone "56.168.192.in-addr.arp" {
+  type master;
+  file "/etc/named/zones/db.56.168.192";
+};
+```
+
+On peut maintenant créer nos zones
+
 
