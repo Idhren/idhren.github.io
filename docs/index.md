@@ -734,12 +734,20 @@ Sous Virtual Box:
   * Réseau : Activer les 2 cartes Réseau --> Définir l'ip 192.168
   * Installation Destination : Configurer son partionnement. (On peut se faire aider par l'installeur).
 > Personnalisé (On attends ... trop longtps !)
+
 > LVM : Oui
+
 > / : 5 Gio
+
 > /home : 5 Gio
+
+
 > /boot/efi : 600 Mio
+
 > /boot : 1024 Mio
+
 > swap : 2 Gio
+
   * Mirroir et sources : Installation Minimal / Serveur
 
 #### Post Configuration
