@@ -705,6 +705,84 @@ Les commandes `chmod`et `chown`permettent de modifier les droits.
 
 Le fichier `/etc/fstab`est celui qui permet de connaitre au système comment sont monter les différents filesystem.
 
+# Pré-requis aux TP
+## Environnement Client - Serveurs
+
+Pour les quelques TP qui seront présentés ci dessous, on partira sur une infrastructure relativement simple basée sur Virtual Box.
+2 VMs seront principalement utilisées. Une VM serveur et une VM linux. Les 2 seront basées sur la distribution AlmaLinux.
+
+L'iso de déploiement utilisée dans les 2 cas est la version minimaliste disponible ici :  [Alma - x86](http://mirror.crexio.com/almalinux/8.7/isos/x86_64/)
+
+### VM Serveurs
+#### Premier Déploiement
+Sous Virtual Box:
+
+* Nouvelle VM
+  * Nouvelle VM
+  * Nom: Alma-Serveur
+  * Dossier local
+  * Type: RHEL8
+  * Stockage : 20Go
+  * 2 cartes réseaux : 1) NAT 2) Host-Only Network
+* Configuration
+  * RAM : 2048
+  * Activer l'EFI
+* Configuration Réseau Virtual Box
+  * Gestionnaire de réseau -> Host-Only Networks -> Désactiver DHCP
+
+* Premier Boot / Installation
+  * Réseau : Activer les 2 cartes Réseau --> Définir l'ip 192.168
+  * Installation Destination : Configurer son partionnement. (On peut se faire aider par l'installeur).
+> Personnalisé (On attends ... trop longtps !)
+> LVM : Oui
+> / : 5 Gio
+> /home : 5 Gio
+> /boot/efi : 600 Mio
+> /boot : 1024 Mio
+> swap : 2 Gio
+  * Mirroir et sources : Installation Minimal / Serveur
+
+#### Post Configuration
+Se connecter en ssh depuis "l'hyperviseur" : `ssh root@192.168.56.10`
+```shell
+# useradd admin
+# passwd admin
+Changement de mot de passe pour l'utilisateur admin.
+Nouveau mot de passe :
+Retapez le nouveau mot de passe :
+passwd : mise à jour réussie de tous les jetons d'authentification.
+```
+Pour être propre et efficace, on va maintenant générer une clef privé/publique pour se connecter à notre serveur
+
+Depuis l'hôte hyperviseur, avec votre compte
+```shell
+# ssh-keygen # On répond aux questions
+# cat ~.ssh/id_rsa.pub | ssh admin@192.168.56.10 "cat >> .ssh/authorized_keys"
+# ssh admin@192.168.56.10
+```
+
+Normalement, la dernière connexion ssh ne doit pas demander de mot de pass.
+On peut vérifier l'échange de clef en augmentant la verbosité de ssh : `ssh -vvv admin@192.168.56.10`
+
+Et enfin, on va modifier la conf ssh pour ne plus autoriser root à se connecter par ce biais:
+`# vim /etc/sshd_config` On modifier la ligne "PermitRootLogin"
+```shell
+#LoginGraceTime 2m
+#PermitRootLogin yes
+#StrictModes yes
+#MaxAuthTries 6
+```
+```shell
+# systemctl restart sshd
+# systemctl status sshd
+```
+
+On peut maintenant se connecter au serveur depuis notre hôte en utilisant le compte admin.
+Pour récupérer les droit root, on "Switch User" :
+```shell
+$ su - 
+```
+
 # Installation DHCPD
 ## Prérequis
 
@@ -716,7 +794,7 @@ En prérequis on part du principe qu'on à déjà a disposition:
 
 Le sous réseau hôte sera une simulation de réseau d'entreprise avec les différentes services de bases.
 
-## Installation Soft
+## Côté Serveur
 
 ```shell
 # dnf install dhcpd-server
@@ -733,10 +811,70 @@ subnet 192.168.50.0 netmask 255.255.255.0 {
         option domain-name-servers 192.168.50.10; # Sera diffusé aux client
         option routers 192.168.50.1; # A voir si on garde.
 }
-
+```
 On a plus qu'à activer et lancer le service.
 On peut lancer la commande `dhcpd -t` pour vérifier que notre configuration est OK. Très pratique pour éviter de casser la prod.
 
 ```shell
 # systemctl enable dhcpd && systemctl start dhcpd
 ```
+
+## Côté Client
+
+```shell
+# nmcli con show
+NAME    UUID                                  TYPE      DEVICE
+enp0s3  2b1cbf16-82b7-4cb4-a326-bf9680fb256a  ethernet  enp0s3
+virbr0  aa91c9db-037f-4c4a-97c7-53ecf7d9237d  bridge    virbr0
+
+# nmcli con mod enp0s3 ipv4.method auto
+# systemctl restart NetworkManager
+```
+Ici on à 1) Forcer le mode dhcp sur la carte réseau. 2) Relancer les services réseaux pour prendre en compte la conf.
+
+## Vérifications
+### Côté Serveur
+
+On peut vérifier le bon fonctionnement du DHCP en regardant plusieurs fichiers:
+```shell
+# cat /var/log/messages | grep DHCP
+Jan 28 03:20:04 localhost dhcpd[1220]: DHCPREQUEST for 192.168.56.101 from 08:00:27:52:b9:c1 via enp0s8: wrong network.
+Jan 28 03:20:04 localhost dhcpd[1220]: DHCPNAK on 192.168.56.101 to 08:00:27:52:b9:c1 via enp0s8
+Jan 28 03:20:04 localhost dhcpd[1220]: DHCPDISCOVER from 08:00:27:52:b9:c1 via enp0s8
+Jan 28 03:20:04 localhost dhcpd[1220]: DHCPOFFER on 192.168.50.100 to 08:00:27:52:b9:c1 via enp0s8
+Jan 28 03:20:04 localhost dhcpd[1220]: DHCPREQUEST for 192.168.50.100 (192.168.50.1) from 08:00:27:52:b9:c1 via enp0s8
+Jan 28 03:20:04 localhost dhcpd[1220]: DHCPACK on 192.168.50.100 to 08:00:27:52:b9:c1 via enp0s8
+```
+Ici on peut voir l'échange entre le client et le serveur (on peut voir d'ailleur que le client a requété une mauvaise adresse IP)
+Les commandes `systemctl status dhcpd` et `journalctl -u dhcpd` renverrons grosso-modo les mêmes informations.
+
+On peut également voir le bail lui même : 
+```shell
+# cat /var/lib/dhcpd/dhcpd.leases
+# The format of this file is documented in the dhcpd.leases(5) manual page.
+# This lease file was written by isc-dhcp-4.3.6
+
+# authoring-byte-order entry is generated, DO NOT DELETE
+authoring-byte-order little-endian;
+
+lease 192.168.50.100 {
+  starts 6 2023/01/28 08:20:04;
+  ends 0 2023/01/29 08:20:04;
+  tstp 0 2023/01/29 08:20:04;
+  cltt 6 2023/01/28 08:20:04;
+  binding state active;
+  next binding state free;
+  rewind binding state free;
+  hardware ethernet 08:00:27:52:b9:c1;
+  uid "\001\010\000'R\271\301";
+}
+server-duid "\000\001\000\001+Q\344T\010\000'1\001\240";
+```
+
+
+
+
+
+
+# Installation DNS
+
