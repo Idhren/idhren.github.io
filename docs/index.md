@@ -704,3 +704,39 @@ Les commandes `chmod`et `chown`permettent de modifier les droits.
 ### La FSTAB
 
 Le fichier `/etc/fstab`est celui qui permet de connaitre au système comment sont monter les différents filesystem.
+
+# Installation DHCPD
+## Prérequis
+
+En prérequis on part du principe qu'on à déjà a disposition:
+* Une VM "Serveur" sous Almalinux avec 2 cartes réseaux. Une "NATée", l'autre sur un sous réseau hôte, privé.
+* Cette VM serveur aura l'ip 192.168.56.10/24 sur le réseau privé.
+* Elle fera office de serveur DHCP + DNS
+* On se connecte à cette VM depuis l'hyperviseur en tant qu'utilisateur et on y fait une élévation de droit avec un `su -` (Pas de connexion root@ mais pas de sudo non plus ...)
+
+Le sous réseau hôte sera une simulation de réseau d'entreprise avec les différentes services de bases.
+
+## Installation Soft
+
+```shell
+# dnf install dhcpd-server
+# vim /etc/dhcpd/dhcpd.conf
+```
+```shell
+default-lease-time 86400; #24h bail
+authoritative;
+
+# On déclare le réseau
+
+subnet 192.168.50.0 netmask 255.255.255.0 {
+        range 192.168.50.100 192.168.50.150; # de 100 a 150
+        option domain-name-servers 192.168.50.10; # Sera diffusé aux client
+        option routers 192.168.50.1; # A voir si on garde.
+}
+
+On a plus qu'à activer et lancer le service.
+On peut lancer la commande `dhcpd -t` pour vérifier que notre configuration est OK. Très pratique pour éviter de casser la prod.
+
+```shell
+# systemctl enable dhcpd && systemctl start dhcpd
+```
