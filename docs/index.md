@@ -1,6 +1,6 @@
-## Introduction à Linux
+# Introduction à Linux
 
-### Say koi linuks
+## Say koi linuks
 
 Au début on avait "Unix" : [Unix — Wikipédia](https://fr.wikipedia.org/wiki/Unix)
 
