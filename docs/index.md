@@ -565,7 +565,7 @@ Anciennement on utilise iptables. Soit en modifiant directement le fichier `/etc
 
 De plus en plus, on utilise *firewalld* sous RHEL, *ufw* sous Debian.
 
-##### Avec Iptables
+#### Avec Iptables
 
 Exemple en créant une règle pour autoriser le ssh : 
 
@@ -599,7 +599,7 @@ Chain OUTPUT (policy ACCEPT)
 target     prot opt source               destination
 ```
 
-##### Avec firewalld
+#### Avec firewalld
 
 (source: [Comment configurer un pare-feu en utilisant firewalld sur CentOS 8 | DigitalOcean](https://www.digitalocean.com/community/tutorials/how-to-set-up-a-firewall-using-firewalld-on-centos-8-fr) )
 
