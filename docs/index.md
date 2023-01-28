@@ -722,7 +722,7 @@ Sous Virtual Box:
   * Nom: Alma-Serveur
   * Dossier local
   * Type: RHEL8
-  * Stockage : 20Go
+  * Stockage : 10Go
   * 2 cartes réseaux : 1) NAT 2) Host-Only Network
 * Configuration
   * RAM : 2048
@@ -731,13 +731,12 @@ Sous Virtual Box:
   * Gestionnaire de réseau -> Host-Only Networks -> Désactiver DHCP
 
 * Premier Boot / Installation
-  * Réseau : Activer les 2 cartes Réseau --> Définir l'ip 192.168
+  * Réseau : Activer les 2 cartes Réseau --> Définir l'ip 192.168.56.10
   * Installation Destination : Configurer son partionnement. (On peut se faire aider par l'installeur).
 ```
-Personnalisé (On attends ... trop longtps !)
 > LVM : Oui
 > / : 5 Gio
-> /home : 5 Gio
+> /home : 2 Gio
 > /boot/efi : 600 Mio
 > /boot : 1024 Mio
 > swap : 2 Gio
@@ -785,6 +784,44 @@ Pour récupérer les droit root, on "Switch User" :
 ```shell
 $ su - 
 ```
+
+##### Exercice pratique - LVM
+
+Sous Virtual box, on va créer un nouveau volume qu'on attache à notre serveur.
+
+Avec fdisk on peut voir notre nouveau disque (/dev/sdb):
+
+```shell
+# fdisk -l
+Disque /dev/sdb : 8 GiB, 8589934592 octets, 16777216 secteurs
+Unités : secteur de 1 × 512 = 512 octets
+Taille de secteur (logique / physique) : 512 octets / 512 octets
+taille d'E/S (minimale / optimale) : 512 octets / 512 octets
+
+
+Disque /dev/sda : 8 GiB, 8589934592 octets, 16777216 secteurs
+Unités : secteur de 1 × 512 = 512 octets
+Taille de secteur (logique / physique) : 512 octets / 512 octets
+```
+
+On va pouvoir créer un volume physique, agrandir le groupe et créer un volume logique (qu'on dédiera aux données par exemple) :
+
+```shell
+# pvcreate /dev/sdb
+# vgextend almalinux /dev/sdb
+# lvcreate -L 5G -n data almalinux
+```
+
+On peut aussi agrandir notre volume HOME:
+
+```shell
+# lvextend -L +1G /dev/almalinux/home
+# resize2fs /dev/almalinux/home
+# df -h /home
+```
+
+On n'oublie pas de redimensionner le FS lui aussi, sinon le système ne comprendra pas.
+
 
 # Installation DHCPD
 ## Prérequis
