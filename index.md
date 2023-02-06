@@ -981,5 +981,46 @@ zone "56.168.192.in-addr.arp" {
 ```
 
 On peut maintenant créer nos zones
+`vim /etc/named/zones/db.adsillh.local`
 
+```shell
+; date file for zone adsillh.local
+$ORIGIN .
+$TTL    86400
+
+adsillh.local   IN      SOA     adsillh.local.  root.adsillh.local. (
+                        2023012806                      ; Serial
+                        10800                           ; Refresh (3 heures)
+                        3600                            ; Retry (1 heure)
+                        604800                          ; Expire (1 semaine)
+                        38400                           ; Minimum (10h40)
+                        )
+
+                        NS      alma-srv.adsillh.local.
+                        A       192.168.56.1
+$ORIGIN adsillh.local.
+alma-srv                A       192.168.56.1
+;alma-client            A       192.168.56.110
+```
+`vim /etc/named/zones/db.56.168.192`
+
+```shell
+; date file for zone adsillh.local
+$ORIGIN .
+$TTL    86400
+
+50.168.192.in-addr.arpa IN      SOA     adsillh.local.  root.adsillh.local. (
+                        2023012803                      ; Serial
+                        10800                           ; Refresh (3 heures)
+                        3600                            ; Retry (1 heure)
+                        604800                          ; Expire (1 semaine)
+                        38400                           ; Minimum (10h40)
+                        )
+
+                        NS      alma-srv.
+                        A       192.168.56.1
+$ORIGIN 50.168.192.in-addr.arpa
+1                       PTR     alma-srv.adsillh.local.
+;110                    PTR     alma-client.adsillh.local.
+``` 
 
