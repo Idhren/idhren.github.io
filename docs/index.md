@@ -115,8 +115,7 @@ Les plus répandus et connus sont les suivants.
 ### Les shells
 
 Un "shell" permet le lien entre l'utilisateur et le noyau : 
-
-![](https://web.maths.unsw.edu.au/~lafaye/CCM/unix/images/shell.png)
+![shell](/images/shell.pnj)
 
 * Bash : Bourne Again Shell : Celui de base aujourd'hui
 
@@ -845,7 +844,7 @@ On l'appelera "alma-client" avec les paramêtre suivant:
 * Partitionnement automatique
 * Mirroir et source : Poste de travail
 
-# Installation DHCPD
+# DHCPD
 
 Un serveur DHCP à pour rôle principal de fournir une adresse IP aux client qui démarre sur son réseau.
 
@@ -853,7 +852,30 @@ Il peut également fournir des informations utile à la configuration et au dém
 
 Il écoute sur le port tcp 67. Le client utilisera également le port 68.
 
-## Côté Serveur
+## Un peu de théorie
+
+Malgré tout, on va voir un peu de théorie sur DHCP: Dynamic Host Configuration Protocol.
+Il permet basiquement d'attribuer une adresse IP à un client. Il simplie la configuration réseau.
+
+A l'origine, il est un complément du protocole BOOTP (Bootstrap Protocol) qui est utilisé, par exemple, lorsque l'on installe une machine à travers le réseau.
+
+Le serveur écoute sur le port tcp 67. Les clients le contact via une requête en broadcast. L'échange client/serveur est le suivant:
+
+Client : DHCPDISCOVER (Broadcast) : Le client cherche les serveurs DHCP du réseau
+Serveur : DHCPOFFER : Le serveur répond en donnant les premiers paramètres
+Client: DHCPREQUEST : Le client demande une ip, un bail, un prolongement, etc...
+Serveur: DHCPDECLINE : Si le client demande une ip déjà allouée --> Refusée
+Serveur: DCHPACK : Réponse du serveur avec les paramètres IP
+Serveur: DHCPNAK : Réponse du serveur indiquant que le bail est échu ou si le client annonce une mauvaise configuration.
+Client: DHCPRELEASE : Le client libère son adresse
+Client: DHCPINFORM : Le client demande les paramètre locaux, dans le cas où il à déjà son adresse IP.
+
+Dans la majorité des cas, l'échange est en 4 étapes : Discover -> Offer -> Request -> Ack
+
+Un serveur DHCP peut fournir plusieurs option au client, en plus de l'adresse IP. C'est le cas notemment pour le serveur de nom, le serveur kickstart, etc ...
+
+## Installation 
+### Côté Serveur
 
 ```shell
 # dnf install dhcpd-server
@@ -878,7 +900,7 @@ On peut lancer la commande `dhcpd -t` pour vérifier que notre configuration est
 # systemctl enable dhcpd && systemctl start dhcpd
 ```
 
-## Côté Client
+### Côté Client
 
 ```shell
 # nmcli con show
@@ -930,13 +952,67 @@ lease 192.168.50.100 {
 server-duid "\000\001\000\001+Q\344T\010\000'1\001\240";
 ```
 
-# Installation DNS
+# DNS
 
 Installer un serveur DNS va demander plus de boulot qu'un DHCP. Les 2 vont cependant travailler ensemble. DHCP fournissant aux client les information de connexion pour contacter le serveur DNS.
 
 En théorie, on install 2 serveurs DNS. Un primaire, et un secondaire, mais dans notre cas on se contentera d'un seul serveur.
 
-## La base
+## Un peu de théorie
+
+Tout comme le DHCP, un serveur DNS est là pour nous simplifier la vie.
+
+Une IP, c'est pas toujours facile à retenir. Un nom, c'est plus simple.
+
+A l'origine, on utilisait les fichiers "hosts" pour faire le liens entre ip et nom de machine. Et c'est toujours très pratique aujourd'hui.
+
+Un nom de domaine se décompose. On part de la racine "." et on remonte.
+
+Par exemple, le FQDN (Fully Qualified Domain Name) : fr.wikipedia.org.
+
+.org est un domaine de premier niveau
+wikipedia et un sous domaine.
+Le domaine .org englobe wikipedia.
+
+Attention à ne pas confondre zone et domaine. Le domaine wikipedia.org et la zone wikipedia.
+
+La résolution d'un nom de domaine se fait de manière récursive, de droite à gauche. On résous d'abords le .org, puis le nom wikipedia et enfin le .fr
+Cette résolution est faite par des serveurs dit "récursifs". Généralement vos FAI, mais certaines boites se configurent également des serveurs récursifs.
+Ces serveurs récursifs commencent par intéroger les serveurs dit "racine" au nombre de 9 dans le monde.
+
+On le verra dans la configuration un peu après, mais dans le cas de la résolution d'adresse IP, pour garder la même logique de résolution de droite à gauche, on écrira une adresse IP 192.168.0.12 sous la forme 12.0.168.192.in-addr.arpa.
+
+Enfin, il existe plusieurs types d'enregistrement DNS: 
+
+* A : Le plus classique qui permet de faire correspondre un nom à une IP.
+* CNAME : Permet de créer un alias
+* MX : Permet de définir un serveur mail
+* NS : Permet de définir un serveur de nom
+* PTR : Fait correspondre une IP à un nom (l'inverse du A)
+* SOA : Start Of Auythority qui donne les information générales de la zone (Serveur pcinipal, contact, expiration, serial)
+* TXT : Permet à un admin d'insérer un texte. C'est un genre de commentaire.
+
+Exemples d'enregistrements:
+
+```shell
+# NS
+wikipedia NS ns1.wikimedia.org.
+wikipedia NS ns2.wikimedia.org.
+# PTR & A
+232.174.198.91.in-addr.arpa. IN PTR text.esams.wikimedia.org.
+text.esams.wikimedia.org. IN A 91.198.174.232
+# MX
+wikimedia.org. IN MX 10 mchenry.wikimedia.org.
+wikimedia.org. IN MX 50 lists.wikimedia.org.
+# CNAME
+fr.wikipedia.org. IN CNAME text.wikimedia.org.
+text.wikimedia.org. IN CNAME text.esams.wikimedia.org.
+text.esams.wikimedia.org. IN A 91.198.174.232
+# SOA
+wikipedia.org. IN SOA ns0.wikimedia.org. hostmaster.wikimedia.org. 2010060311 43200 7200 1209600 3600
+```
+
+## Installation
 
 ```shell
 # dnf install bind9
