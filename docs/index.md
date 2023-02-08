@@ -1133,5 +1133,75 @@ Name:   alma-srv.adsillh.local
 Address: 192.168.56.1
 ```
 
+## Réservation d'IP et de nom
+
+En l'état, si on fait un `nslookup alma-client`, on aura pas de réponse.
+
+Il faut les déclarer manuellement ou configurer DHCPD et DNS de façon à ce que le premier update le 2eme.
+
+### Manuellement
+
+D'abord pour le DNS
+
+`vim /etc/named/zones/db.adsillh.local` 
+
+```shell
+
+;Postes Clients
+alma-client	A	192.168.56.101
+``` 	
+
+Et pour le DHCP
+
+`vim /etc/dhcp/dhcpd.conf` 
+```shell
+host alma-client { hardware ethernet aa:bb:cc:dd:ee:ff:gg; fixed-address 192.168.56.101; }
+```
+
+On peut relancer les 2 services (et la VM cliente) et tester. `nslookup alma-client` et `ping alma-client` devraient répondre.
+
+
+### Dynamiquement
+
+Pour l'instant, on va gentiement dire à SELinux de nous laisser tranquille, on verra plus tard pour lui parler correctement:
+`setenforce 0` 
+
+On va commencer par updater la conf de DNS
+
+`vim /etc/named/named.conf.local` 
+
+```shell
+include "/etc/named/rndc.key";
+controls {
+        inet 127.0.0.1 allow { localhost; } keys { rndc-key; };
+};
+```
+
+On génère une clef qui va servir à DHCP d'écrire dans DNS
+
+```shell
+rndc-confgen -a
+mv rndc.key /etc/named/
+```
+`systemctl restart named`
+
+On peut maintenant configurer DHCPD en ajoutant les options suivantes:
+
+```shell
+# configuration of DNS update
+ddns-update-style interim;
+update-static-leases on; # update dns for static entries
+allow client-updates;
+include "/etc/named/rndc.key";
+
+zone adsillh.local. {
+        primary 127.0.0.1;
+        key rndc-key;
+}
+zone 56.168.192.in-addr.arpa. {
+        primary 127.0.0.1;
+        key rndc-key;
+}
+```
 
 
