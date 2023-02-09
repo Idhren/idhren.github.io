@@ -317,7 +317,7 @@ janv. 24 13:22:04 localhost.localdomain systemd[1]: Starting OpenSSH server daem
 janv. 24 13:22:04 localhost.localdomain sshd[926]: Server listening on 0.0.0.0 port 22.
 janv. 24 13:22:04 localhost.localdomain sshd[926]: Server listening on :: port 22.
 janv. 24 13:22:04 localhost.localdomain systemd[1]: Started OpenSSH server daemon.
-janv. 24 13:20:27 localhost.localdomain sshd[1588]: Accepted password for root from 192.168.50.200 port 51302 ssh2
+janv. 24 13:20:27 localhost.localdomain sshd[1588]: Accepted password for root from 192.168.56.200 port 51302 ssh2
 janv. 24 13:20:27 localhost.localdomain sshd[1588]: pam_unix(sshd:session): session opened for user root by (uid=0)
 ```
 
@@ -330,7 +330,7 @@ janv. 24 13:22:04 localhost.localdomain systemd[1]: Starting OpenSSH server daem
 janv. 24 13:22:04 localhost.localdomain sshd[926]: Server listening on 0.0.0.0 port 22.
 janv. 24 13:22:04 localhost.localdomain sshd[926]: Server listening on :: port 22.
 janv. 24 13:22:04 localhost.localdomain systemd[1]: Started OpenSSH server daemon.
-janv. 24 13:20:27 localhost.localdomain sshd[1588]: Accepted password for root from 192.168.50.200 port 51302 ssh2
+janv. 24 13:20:27 localhost.localdomain sshd[1588]: Accepted password for root from 192.168.56.200 port 51302 ssh2
 janv. 24 13:20:27 localhost.localdomain sshd[1588]: pam_unix(sshd:session): session opened for user root by (uid=0)
 ```
 
@@ -388,7 +388,7 @@ NAME=enp0s8
 UUID=b37aa47a-eed1-4564-a3d2-11d98d31a63d
 DEVICE=enp0s8
 ONBOOT=yes
-IPADDR=192.168.50.1
+IPADDR=192.168.56.1
 PREFIX=24
 ```
 
@@ -887,10 +887,10 @@ authoritative;
 
 # On déclare le réseau
 
-subnet 192.168.50.0 netmask 255.255.255.0 {
-        range 192.168.50.100 192.168.50.150; # de 100 a 150
-        option domain-name-servers 192.168.50.10; # Sera diffusé aux client
-        option routers 192.168.50.1; # A voir si on garde.
+subnet 192.168.56.0 netmask 255.255.255.0 {
+        range 192.168.56.100 192.168.56.150; # de 100 a 150
+        option domain-name-servers 192.168.56.10; # Sera diffusé aux client
+        option routers 192.168.56.1; # A voir si on garde.
 }
 ```
 On a plus qu'à activer et lancer le service.
@@ -922,9 +922,9 @@ On peut vérifier le bon fonctionnement du DHCP en regardant plusieurs fichiers:
 Jan 28 03:20:04 localhost dhcpd[1220]: DHCPREQUEST for 192.168.56.101 from 08:00:27:52:b9:c1 via enp0s8: wrong network.
 Jan 28 03:20:04 localhost dhcpd[1220]: DHCPNAK on 192.168.56.101 to 08:00:27:52:b9:c1 via enp0s8
 Jan 28 03:20:04 localhost dhcpd[1220]: DHCPDISCOVER from 08:00:27:52:b9:c1 via enp0s8
-Jan 28 03:20:04 localhost dhcpd[1220]: DHCPOFFER on 192.168.50.100 to 08:00:27:52:b9:c1 via enp0s8
-Jan 28 03:20:04 localhost dhcpd[1220]: DHCPREQUEST for 192.168.50.100 (192.168.50.1) from 08:00:27:52:b9:c1 via enp0s8
-Jan 28 03:20:04 localhost dhcpd[1220]: DHCPACK on 192.168.50.100 to 08:00:27:52:b9:c1 via enp0s8
+Jan 28 03:20:04 localhost dhcpd[1220]: DHCPOFFER on 192.168.56.100 to 08:00:27:52:b9:c1 via enp0s8
+Jan 28 03:20:04 localhost dhcpd[1220]: DHCPREQUEST for 192.168.56.100 (192.168.56.1) from 08:00:27:52:b9:c1 via enp0s8
+Jan 28 03:20:04 localhost dhcpd[1220]: DHCPACK on 192.168.56.100 to 08:00:27:52:b9:c1 via enp0s8
 ```
 Ici on peut voir l'échange entre le client et le serveur (on peut voir d'ailleur que le client a requété une mauvaise adresse IP)
 Les commandes `systemctl status dhcpd` et `journalctl -u dhcpd` renverrons grosso-modo les mêmes informations.
@@ -938,7 +938,7 @@ On peut également voir le bail lui même :
 # authoring-byte-order entry is generated, DO NOT DELETE
 authoring-byte-order little-endian;
 
-lease 192.168.50.100 {
+lease 192.168.56.100 {
   starts 6 2023/01/28 08:20:04;
   ends 0 2023/01/29 08:20:04;
   tstp 0 2023/01/29 08:20:04;
@@ -1015,7 +1015,7 @@ wikipedia.org. IN SOA ns0.wikimedia.org. hostmaster.wikimedia.org. 2010060311 43
 ## Installation
 
 ```shell
-# dnf install bind9
+# dnf install bind bind-utils
 # vim /etc/named.conf
 ```
 
@@ -1030,7 +1030,7 @@ Modifiez donc les lignes suivantes:
 
 ```shell
 options {
-  listen-on port 53 { 127.0.0.1; 192.168.56.10;};o
+  listen-on port 53 { 127.0.0.1; 192.168.56.10;};
 # listen-on-v6 port 53 { ::1; };
   [...]
   allow-query { localhost; 192.168.56.0; };
@@ -1049,8 +1049,7 @@ zone "adsillh.local" {
   type master;
   file "/etc/named/zones/db.adsillh.local";
 };
-
-zone "56.168.192.in-addr.arp" {
+zone "56.168.192.in-addr.arpa" {
   type master;
   file "/etc/named/zones/db.56.168.192";
 };
@@ -1065,42 +1064,38 @@ On peut maintenant créer nos zones. Il en existe deux, la forward et la reverse
 ```shell
 ; date file for zone adsillh.local
 $ORIGIN .
-$TTL    86400
-
-adsillh.local   IN      SOA     adsillh.local.  root.adsillh.local. (
-                        2023012806                      ; Serial
-                        10800                           ; Refresh (3 heures)
-                        3600                            ; Retry (1 heure)
-                        604800                          ; Expire (1 semaine)
-                        38400                           ; Minimum (10h40)
-                        )
-
+$TTL 86400      ; 1 day
+adsillh.local           IN SOA  adsillh.local. root.adsillh.local. (
+                                2023012808 ; serial
+                                10800      ; refresh (3 hours)
+                                3600       ; retry (1 hour)
+                                604800     ; expire (1 week)
+                                38400      ; minimum (10 hours 40 minutes)
+                                )
                         NS      alma-srv.adsillh.local.
-                        A       192.168.56.1
 $ORIGIN adsillh.local.
-alma-srv                A       192.168.56.1
-;alma-client            A       192.168.56.110
+$TTL 3600       ; 1 hour
+alma-srv                A       192.168.56.10
+
 ```
 `vim /etc/named/zones/db.56.168.192`
 
 ```shell
 ; date file for zone adsillh.local
 $ORIGIN .
-$TTL    86400
-
-50.168.192.in-addr.arpa IN      SOA     adsillh.local.  root.adsillh.local. (
-                        2023012803                      ; Serial
-                        10800                           ; Refresh (3 heures)
-                        3600                            ; Retry (1 heure)
-                        604800                          ; Expire (1 semaine)
-                        38400                           ; Minimum (10h40)
-                        )
-
+$TTL 86400      ; 1 day
+56.168.192.in-addr.arpa IN SOA  adsillh.local. root.adsillh.local. (
+                                5               ; serial
+                                10800      ; refresh (3 hours)
+                                3600       ; retry (1 hour)
+                                604800     ; expire (1 week)
+                                38400      ; minimum (10 hours 40 minutes)
+                                )
                         NS      alma-srv.
-                        A       192.168.56.1
-$ORIGIN 50.168.192.in-addr.arpa
-1                       PTR     alma-srv.adsillh.local.
-;110                    PTR     alma-client.adsillh.local.
+                        A       192.168.56.10
+$ORIGIN 56.168.192.in-addr.arpa.
+10                      PTR     alma-srv.adsillh.local.
+$TTL 3600       ; 1 hour
 ``` 
 
 On peut d'ores et déjà relancer notre serveur dns.
@@ -1118,7 +1113,7 @@ On va donc rajouter les 2 lignes dans notre déclaration de subnet:
 
 ```shell
         option domain-name "adsillh.local";
-        option domain-name-servers 192.168.50.1;
+        option domain-name-servers 192.168.56.1;
 ```
 
 On peut relancer le serveur dhcpd.
@@ -1151,7 +1146,7 @@ D'abord pour le DNS
 alma-client	A	192.168.56.101
 ``` 	
 
-Et pour le DHCP
+Et pour le DHCP, il faut ajouter cette ligne à la fin du subnet
 
 `vim /etc/dhcp/dhcpd.conf` 
 ```shell
@@ -1168,7 +1163,7 @@ Pour l'instant, on va gentiement dire à SELinux de nous laisser tranquille, on 
 
 On va commencer par updater la conf de DNS
 
-`vim /etc/named/named.conf.local` 
+`vim /etc/named.conf.local` 
 
 ```shell
 include "/etc/named/rndc.key";
