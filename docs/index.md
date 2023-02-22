@@ -904,7 +904,7 @@ Un serveur DHCP peut fournir plusieurs option au client, en plus de l'adresse IP
 
 ```shell
 # dnf install dhcp-server
-# vim /etc/dhcpd/dhcpd.conf
+# vim /etc/dhcp/dhcpd.conf
 ```
 ```shell
 default-lease-time 86400; #24h bail
@@ -1105,7 +1105,7 @@ $TTL 3600       ; 1 hour
 alma-srv                A       192.168.56.10
 
 ```
-`vim /etc/named/zones/db.56.168.192`
+`vim /var/named/data/db.56.168.192`
 
 ```shell
 ; date file for zone adsillh.local
