@@ -749,6 +749,10 @@ Sous Virtual Box:
 ```
   * Mirroir et sources : Installation Minimal / Serveur
 
+Pour la configuration réseau, ça donne ça :
+
+[config-reseau-serveur](images/install_alma_srv_network.png)
+
 #### Post Configuration
 Se connecter en ssh depuis "l'hyperviseur" : `ssh root@192.168.56.10`
 ```shell
@@ -763,8 +767,15 @@ Pour être propre et efficace, on va maintenant générer une clef privé/publiq
 
 Depuis l'hôte hyperviseur, avec votre compte
 ```shell
+# ssh admin@192.168.56.10
+# mkdir .ssh && touch .ssh/authorized_keys
+# chmod 700 .ssh && chmod 600 .ssh/authorized_keys
+```
+Depuis votre hyperviseur:
+
+```
 # ssh-keygen # On répond aux questions
-# cat ~.ssh/id_rsa.pub | ssh admin@192.168.56.10 "cat >> .ssh/authorized_keys"
+# cat ~/.ssh/id_rsa.pub | ssh admin@192.168.56.10 "cat >> .ssh/authorized_keys"
 # ssh admin@192.168.56.10
 ```
 
@@ -789,6 +800,18 @@ On peut maintenant se connecter au serveur depuis notre hôte en utilisant le co
 Pour récupérer les droit root, on "Switch User" :
 ```shell
 $ su - 
+```
+
+On va également configurer un peu mieux le parefeu
+
+```shell
+# firewall-cmd --zone=trusted --change-interface=enp0s8 --permanent
+# firewall-cmd --zone=trusted --add-service=http --permanent
+# firewall-cmd --zone=trusted --add-service=ssh --permanent
+# firewall-cmd --zone=trusted --add-service=dhcp --permanent
+# firewall-cmd --zone=trusted --add-service=dns --permanent
+# firewall-cmd --reload
+# firewall-cmd --zone=trusted --list-all
 ```
 
 #### Exercice pratique - LVM
@@ -833,6 +856,8 @@ On n'oublie pas de redimensionner le FS lui aussi, sinon le système ne comprend
 On détaillera très peu l'installation de la VM cliente ici.
 
 Le but est d'avoir une VM avec interface graphique qui permette de confirmer le fonctionnement de nos serveurs.
+Pour ces TP, on se facilite la vie en créant une 2eme connexion réseau en NAT juste pour l'installation de façon à pouvoir accéders aux dépôts.
+Cette deuxième connexion pourra être supprimée après l'install.
 
 On l'appelera "alma-client" avec les paramêtre suivant:
 
@@ -878,7 +903,7 @@ Un serveur DHCP peut fournir plusieurs option au client, en plus de l'adresse IP
 ### Côté Serveur
 
 ```shell
-# dnf install dhcpd-server
+# dnf install dhcp-server
 # vim /etc/dhcpd/dhcpd.conf
 ```
 ```shell
@@ -1012,6 +1037,8 @@ text.esams.wikimedia.org. IN A 91.198.174.232
 wikipedia.org. IN SOA ns0.wikimedia.org. hostmaster.wikimedia.org. 2010060311 43200 7200 1209600 3600
 ```
 
+Pas mal d'infos [sur ce site](https://www.slashroot.in/what-dns-zone-file-complete-tutorial-zone-file-and-its-contents)
+
 ## Installation
 
 ```shell
@@ -1026,32 +1053,32 @@ Il écoute sur le port tcp 53.
 Son fichier de configuration principal est `/etc/named.conf`
 
 On va commencer par faire écouter notre serveur sur son IP du réseau et lui autoriser à répondre aux requêtes de ce même réseau.
+On include également un fichier qu'on va créer plus tard. Il contiendra la déclaration de nos zones.
 Modifiez donc les lignes suivantes:
 
 ```shell
 options {
-  listen-on port 53 { 127.0.0.1; 192.168.56.10;};
+  listen-on port 53 { 127.0.0.1; 192.168.56.10; };
 # listen-on-v6 port 53 { ::1; };
   [...]
-  allow-query { localhost; 192.168.56.0; };
+  allow-query { localhost; 192.168.56.0/24; };
   [...]
+  include "/var/named/named.adsillh";
 ```
 
 Avec un serveur secondaire, il aurait fallu rajouter l'options `allow-transfer { $SERVER_IP; };`
 
-A la fin du fichier, ajouter également la ligne `include "/etc/named.conf.local"`. Ce fichier contiendra la définition de notre (nos?) zone(s) DNS.
+On créer donc le fichier dans lequel on déclare nos zones dites "forward" et "reverse" :
 
-On créer donc ce fichier dans lequel on déclare nos zones dites "forward" et "reverse" :
-
-`vim /etc/named.conf.local`
+`vim /var/named/named.adsillh`
 ```shell
 zone "adsillh.local" {
   type master;
-  file "/etc/named/zones/db.adsillh.local";
+  file "/var/named/data/db.adsillh.local";
 };
 zone "56.168.192.in-addr.arpa" {
   type master;
-  file "/etc/named/zones/db.56.168.192";
+  file "/var/named/data/db.56.168.192";
 };
 ```
 
@@ -1059,7 +1086,7 @@ zone "56.168.192.in-addr.arpa" {
 
 On peut maintenant créer nos zones. Il en existe deux, la forward et la reverse.
 
-`vim /etc/named/zones/db.adsillh.local`
+`vim /var/named/data/db.adsillh.local`
 
 ```shell
 ; date file for zone adsillh.local
@@ -1121,11 +1148,11 @@ Depuis le client (après avoir récupérer un nouveau bail) :
 
 ```shell
 [root@alma-client ~]# nslookup alma-srv
-Server:         192.168.56.1
+Server:         192.168.56.10
 Address:        192.168.56.1#53
 
 Name:   alma-srv.adsillh.local
-Address: 192.168.56.1
+Address: 192.168.56.10
 ```
 
 ## Réservation d'IP et de nom
@@ -1138,19 +1165,25 @@ Il faut les déclarer manuellement ou configurer DHCPD et DNS de façon à ce qu
 
 D'abord pour le DNS
 
-`vim /etc/named/zones/db.adsillh.local` 
+`vim /var/named/data/db.adsillh.local` 
 
 ```shell
 
 ;Postes Clients
-alma-client	A	192.168.56.101
+alma-client	A	192.168.56.20
 ``` 	
 
-Et pour le DHCP, il faut ajouter cette ligne à la fin du subnet
+`vim /var/named/data/db.56.168.192`
+```shell
+;Postes Clients
+20                      PTR     alma-cliente.adsillh.local.
+```
+
+Et pour le DHCP, il faut ajouter cette ligne à la fin du fichier (avec la bonne adresse MAC)
 
 `vim /etc/dhcp/dhcpd.conf` 
 ```shell
-host alma-client { hardware ethernet aa:bb:cc:dd:ee:ff:gg; fixed-address 192.168.56.101; }
+host alma-client { hardware ethernet aa:bb:cc:dd:ee:ff:gg; fixed-address 192.168.56.20; }
 ```
 
 On peut relancer les 2 services (et la VM cliente) et tester. `nslookup alma-client` et `ping alma-client` devraient répondre.
@@ -1158,15 +1191,16 @@ On peut relancer les 2 services (et la VM cliente) et tester. `nslookup alma-cli
 
 ### Dynamiquement
 
-Pour l'instant, on va gentiement dire à SELinux de nous laisser tranquille, on verra plus tard pour lui parler correctement:
-`setenforce 0` 
+SELinux va commencer à poser problème. On va activer modifier un booleen pour se faciliter la vie, mais il y a probablement mieux à faire ...
+
+`setsebool -P domain_can_mmap_files 1`
 
 On va commencer par updater la conf de DNS
 
-`vim /etc/named.conf.local` 
+`vim /etc/named.conf` 
 
 ```shell
-include "/etc/named/rndc.key";
+include "/etc/rndc.key";
 controls {
         inet 127.0.0.1 allow { localhost; } keys { rndc-key; };
 };
@@ -1176,7 +1210,6 @@ On génère une clef qui va servir à DHCP d'écrire dans DNS
 
 ```shell
 rndc-confgen -a
-mv rndc.key /etc/named/
 ```
 `systemctl restart named`
 
@@ -1187,7 +1220,7 @@ On peut maintenant configurer DHCPD en ajoutant les options suivantes:
 ddns-update-style interim;
 update-static-leases on; # update dns for static entries
 allow client-updates;
-include "/etc/named/rndc.key";
+include "/etc/rndc.key";
 
 zone adsillh.local. {
         primary 127.0.0.1;
@@ -1198,5 +1231,174 @@ zone 56.168.192.in-addr.arpa. {
         key rndc-key;
 }
 ```
+
+Pour tester il faudra bien sur commenter les déclaration manuelles qu'on à fait plus tôt !
+
+
+# Mail
+
+## Prérequis
+
+On va commencer pas créer nos enregistrement A et MX dans notre zone DNS
+
+`vim /var/named/data/db.adsillh.local`
+
+```shell
+$ORIGIN .
+$TTL 86400      ; 1 day
+adsillh.local           IN SOA  adsillh.local. root.adsillh.local. (
+                                2023012812 ; serial
+                                10800      ; refresh (3 hours)
+                                3600       ; retry (1 hour)
+                                604800     ; expire (1 week)
+                                38400      ; minimum (10 hours 40 minutes)
+                                )
+                        NS      alma-srv.adsillh.local.
+$ORIGIN adsillh.local.
+
+; A Records
+alma-srv                A       192.168.56.10
+mail                    A       192.168.56.10
+
+; MX Records
+                IN      MX      10 mail.adsillh.local.
+
+;Dynamics
+alma-client             A       192.168.56.100
+                        TXT     "316f3d29b9318c29758b98e6ec164ac1a9"
+```
+
+`vim /var/named/data/db.56.168.192`
+
+```shell
+$ORIGIN .
+$TTL 86400      ; 1 day
+56.168.192.in-addr.arpa IN SOA  adsillh.local. root.adsillh.local. (
+                                8          ; serial
+                                10800      ; refresh (3 hours)
+                                3600       ; retry (1 hour)
+                                604800     ; expire (1 week)
+                                38400      ; minimum (10 hours 40 minutes)
+                                )
+                        NS      alma-srv.
+                        A       192.168.56.10
+$ORIGIN 56.168.192.in-addr.arpa.
+
+10                      PTR     alma-srv.adsillh.local.
+10                      PTR     mail.adsillh.local.
+100                     PTR     alma-client.adsillh.local.
+```
+
+On doit aussi créer les règles au niveau parefeu
+
+```shell
+# firewall-cmd --zone=trusted --add-service=pop3 --permanent
+# firewall-cmd --zone=trusted --add-service=imap --permanent
+# firewall-cmd --zone=trusted --add-service=smtp --permanent
+# firewall-cmd --zone=trusted --add-service=smtps --permanent
+# firewall-cmd --reload
+```
+
+## Dovecot & PostFix
+
+Dovecot est un serveur pop/imap.
+Postfix est un serveur SMTP.
+
+`dnf install dovecot postfix`
+
+On va se créer des certificat histoire de pas faire passer tous les mails et auth en clair
+
+```shell
+# openssl req -x509 -nodes -newkey rsa:2048 -keyout mailserver.key -out mailserver.crt -nodes -days 365
+# openssl req -new -x509 -extensions v3_ca -keyout cakey.pem -out cacert.pem -days 365
+# mkdir /etc/postfix/ssl
+# mv mailserver.* ca* /etc/postfix/ssl/
+# restorcon /etc/postfix/ssl/*
+```
+
+`vim /etc/postfix/main.cf`
+```shell
+smtp_tls_security_level = may
+meta_directory = /etc/postfix
+shlib_directory = /usr/lib64/postfix
+smtpd_tls_auth_only = no
+smtp_tls_note_starttls_offer = yes
+smtpd_tls_CAfile = /etc/postfix/ssl/cacert.pem
+smtpd_tls_loglevel = 1
+smtpd_tls_received_header = yes
+smtpd_tls_session_cache_timeout = 3600s
+tls_random_source = dev:/dev/urandom
+home_mailbox = Maildir/
+virtual_alias_maps = hash:/etc/postfix/virtual
+mynetworks = 192.168.56.0/24
+```
+
+Faute d'annuaire, de gestion de comptes et de bdd, on va créer des boites "virtuelles" avec postfix. Un système d'alias permettra d'affecter les bal aux utilisateurs
+
+`vim /etc/postfix/virtual`
+On ajoute en fin de fichier nos alias
+```shell
+test@adsillh.local admin
+admin@adsillh.local admin
+```
+Ici, le compte admin local à 2 BAL
+
+`postmap /etc/postfix/virtual` (ça permet de créer la bdd qui va bien)
+
+On peut d'ores et déjà tester le fonctionnement de notre smtp et de la livraison des mails avec telnet
+
+```shell
+# dnf install telnet
+# telnet localhost 25
+Trying 127.0.0.1...
+Connected to localhost.
+Escape character is '^]'.
+220 mailserver.example.com ESMTP Postfix (Ubuntu)
+```
+`ehlo mailserver`
+```
+250-mailserver.example.com
+250-PIPELINING
+250-SIZE 10240000
+250-VRFY
+250-ETRN
+250-STARTTLS
+250-AUTH PLAIN LOGIN
+250-AUTH=PLAIN LOGIN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 DSN
+
+mail from: admin@adsillh.local
+rcp to: admin@adsillh.local
+data
+Hello!  Ceci est un test !
+.
+250 2.0.0 Ok: queued as D9CC7424FE
+
+quit
+221 2.0.0 Bye
+Connection closed by foreign host.
+
+```
+
+Pour vérifier que le mail est bien quelque part :
+
+```shell
+# ls /home/admin/Maildir/new/
+# cat /home/admin/Maildir/new/1677083598.Vfd00I806bd5M15404.alma-srv.adsillh.local
+```
+
+
+Pour le coup, Dovecot va faire sa vie maintenant et on a juste besoin de le démarrer
+
+`systemctl enable --now dovecot`
+
+
+
+
+
+
+
 
 
