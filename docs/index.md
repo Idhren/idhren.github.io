@@ -1370,6 +1370,24 @@ home_mailbox = Maildir/
 virtual_alias_maps = hash:/etc/postfix/virtual
 mynetworks = 192.168.56.0/24
 ```
+On décommente les lignes concernées ci dessous :
+
+`vim /etc/postfix/master.cf`
+```shell
+[...]
+smtps     inet  n       -       n       -       -       smtpd
+  -o syslog_name=postfix/smtps
+  -o smtpd_tls_wrappermode=yes
+#  -o smtpd_sasl_auth_enable=yes
+  -o smtpd_reject_unlisted_recipient=no
+  -o smtpd_client_restrictions=$mua_client_restrictions
+  -o smtpd_helo_restrictions=$mua_helo_restrictions
+  -o smtpd_sender_restrictions=$mua_sender_restrictions
+  -o smtpd_recipient_restrictions=
+#  -o smtpd_relay_restrictions=permit_sasl_authenticated,reject
+  -o milter_macro_daemon_name=ORIGINATING
+[...]
+``` 
 
 Faute d'annuaire, de gestion de comptes et de bdd, on va créer des boites "virtuelles" avec postfix. Un système d'alias permettra d'affecter les bal aux utilisateurs
 
