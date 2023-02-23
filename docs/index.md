@@ -1266,7 +1266,15 @@ Pour tester il faudra bien sur commenter les déclaration manuelles qu'on à fai
 
 ## Prérequis
 
-On va commencer pas créer nos enregistrement A et MX dans notre zone DNS
+Il faut que notre serveur soit nommé correctement:
+` hostname` doit renvoyer `alma-srv.adsillh.local`.
+
+sinon :
+
+`hostnamectl set-hostname alma-srv.adsillh.local` 
+
+
+Ensuite on créer nos enregistrements A et MX dans notre zone DNS
 
 `vim /var/named/data/db.adsillh.local`
 
