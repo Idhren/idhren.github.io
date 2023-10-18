@@ -600,7 +600,7 @@ target     prot opt source               destination
 
 ### Avec firewalld
 
-(source: [Comment configurer un pare-feu en utilisant firewalld sur CentOS 8 | DigitalOcean](https://www.digitalocean.com/community/tutorials/how-to-set-up-a-firewall-using-firewalld-on-centos-8-fr) )
+(source : [Comment configurer un pare-feu en utilisant firewalld sur CentOS 8 | DigitalOcean](https://www.digitalocean.com/community/tutorials/how-to-set-up-a-firewall-using-firewalld-on-centos-8-fr) )
 
 Firewalld fonctionne avec un système de zone.
 
