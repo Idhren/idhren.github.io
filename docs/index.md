@@ -886,14 +886,14 @@ A l'origine, il est un complément du protocole BOOTP (Bootstrap Protocol) qui e
 
 Le serveur écoute sur le port tcp 67. Les clients le contact via une requête en broadcast. L'échange client/serveur est le suivant:
 
-Client : DHCPDISCOVER (Broadcast) : Le client cherche les serveurs DHCP du réseau
-Serveur : DHCPOFFER : Le serveur répond en donnant les premiers paramètres
-Client: DHCPREQUEST : Le client demande une ip, un bail, un prolongement, etc...
-Serveur: DHCPDECLINE : Si le client demande une ip déjà allouée --> Refusée
-Serveur: DCHPACK : Réponse du serveur avec les paramètres IP
-Serveur: DHCPNAK : Réponse du serveur indiquant que le bail est échu ou si le client annonce une mauvaise configuration.
-Client: DHCPRELEASE : Le client libère son adresse
-Client: DHCPINFORM : Le client demande les paramètre locaux, dans le cas où il à déjà son adresse IP.
+Client : DHCPDISCOVER (Broadcast) : Le client cherche les serveurs DHCP du réseau  
+Serveur : DHCPOFFER : Le serveur répond en donnant les premiers paramètres  
+Client: DHCPREQUEST : Le client demande une ip, un bail, un prolongement, etc...  
+Serveur: DHCPDECLINE : Si le client demande une ip déjà allouée --> Refusée  
+Serveur: DCHPACK : Réponse du serveur avec les paramètres IP  
+Serveur: DHCPNAK : Réponse du serveur indiquant que le bail est échu ou si le client annonce une mauvaise configuration.  
+Client: DHCPRELEASE : Le client libère son adresse  
+Client: DHCPINFORM : Le client demande les paramètre locaux, dans le cas où il à déjà son adresse IP.  
 
 Dans la majorité des cas, l'échange est en 4 étapes : Discover -> Offer -> Request -> Ack
 
@@ -917,6 +917,9 @@ subnet 192.168.56.0 netmask 255.255.255.0 {
         option routers 192.168.56.1; # A voir si on garde.
 }
 ```
+
+
+
 On a plus qu'à activer et lancer le service.
 On peut lancer la commande `dhcpd -t` pour vérifier que notre configuration est OK. Très pratique pour éviter de casser la prod.
 
