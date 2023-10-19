@@ -600,7 +600,7 @@ target     prot opt source               destination
 
 ### Avec firewalld
 
-(source : [Comment configurer un pare-feu en utilisant firewalld sur CentOS 8 | DigitalOcean](https://www.digitalocean.com/community/tutorials/how-to-set-up-a-firewall-using-firewalld-on-centos-8-fr) )
+[Source: ](https://www.digitalocean.com/community/tutorials/how-to-set-up-a-firewall-using-firewalld-on-centos-8-fr)
 
 Firewalld fonctionne avec un système de zone.
 
@@ -802,16 +802,12 @@ Pour récupérer les droit root, on "Switch User" :
 $ su - 
 ```
 
-On va également configurer un peu mieux le parefeu
+On va également configurer un peu mieux le parefeu, en se basant sur ce qu'on a vu plus tôt : 
 
 ```shell
-# firewall-cmd --zone=trusted --change-interface=enp0s8 --permanent
-# firewall-cmd --zone=trusted --add-service=http --permanent
-# firewall-cmd --zone=trusted --add-service=ssh --permanent
-# firewall-cmd --zone=trusted --add-service=dhcp --permanent
-# firewall-cmd --zone=trusted --add-service=dns --permanent
-# firewall-cmd --reload
-# firewall-cmd --zone=trusted --list-all
+# Positionner notre interface dans la bonne zone
+# Ouvrir les flux http, https, dhcp, dns et ssh.
+# Relancer le firewall et vérifier
 ```
 
 #### Exercice pratique - LVM
@@ -899,6 +895,28 @@ Dans la majorité des cas, l'échange est en 4 étapes : Discover -> Offer -> Re
 
 Un serveur DHCP peut fournir plusieurs option au client, en plus de l'adresse IP. C'est le cas notemment pour le serveur de nom, le serveur kickstart, etc ...
 
+Les principaux fichiers d'un serveurs dhcp : 
+
+* /etc/http/httpd.conf
+
+```shell
+default-lease-time 86400; #24h bail
+authoritative;
+
+# On déclare le réseau
+
+subnet 10.11.0.0 netmask 255.255.0.0 {
+        range 10.11.0.100 10.11.0.150; # de 100 a 150
+        option routers 10.11.0.199;
+        option domain-name-servers 10.11.0.199;
+        option domain-name "narnia.org";
+}
+```
+
+* /var/lib/dhcpd/dhcpd.leases
+
+Permet de voir les baux dhcp en cours
+
 ## Installation 
 ### Côté Serveur
 
@@ -906,26 +924,10 @@ Un serveur DHCP peut fournir plusieurs option au client, en plus de l'adresse IP
 # dnf install dhcp-server
 # vim /etc/dhcp/dhcpd.conf
 ```
-```shell
-default-lease-time 86400; #24h bail
-authoritative;
-
-# On déclare le réseau
-
-subnet 192.168.56.0 netmask 255.255.255.0 {
-        range 192.168.56.100 192.168.56.150; # de 100 a 150
-        option routers 192.168.56.1; # A voir si on garde.
-}
-```
-
-
-
-On a plus qu'à activer et lancer le service.
+Créer une configuration dhcp simple pour notre réseau, en définissant l'adresse du réseau, son masque et la passerelle.   
 On peut lancer la commande `dhcpd -t` pour vérifier que notre configuration est OK. Très pratique pour éviter de casser la prod.
 
-```shell
-# systemctl enable dhcpd && systemctl start dhcpd
-```
+Pensez à lancer et activer le service dhcpd avec systemctl ;)
 
 ### Côté Client
 
@@ -938,7 +940,7 @@ virbr0  aa91c9db-037f-4c4a-97c7-53ecf7d9237d  bridge    virbr0
 # nmcli con mod enp0s3 ipv4.method auto
 # systemctl restart NetworkManager
 ```
-Ici on à 1) Forcer le mode dhcp sur la carte réseau. 2) Relancer les services réseaux pour prendre en compte la conf.
+Ici on a 1) Forcé le mode dhcp sur la carte réseau. 2) Relancé les services réseaux pour prendre en compte la conf.
 
 ## Vérifications
 ### Côté Serveur
@@ -998,7 +1000,7 @@ Un nom de domaine se décompose. On part de la racine "." et on remonte.
 Par exemple, le FQDN (Fully Qualified Domain Name) : fr.wikipedia.org.
 
 .org est un domaine de premier niveau
-wikipedia et un sous domaine.
+wikipedia et un sous domaine, une zone DNS.
 Le domaine .org englobe wikipedia.
 
 Attention à ne pas confondre zone et domaine. Le domaine wikipedia.org et la zone wikipedia.
@@ -1052,7 +1054,10 @@ Bind (Berkeley Internet Name Domain) est le sserveur DNS le plus commun. Il a é
 
 Il écoute sur le port tcp 53.
 
-Son fichier de configuration principal est `/etc/named.conf`
+Son fichier de configuration principal est `/etc/named.conf`  
+On pourrait mettre toute notre configuration dans ce fichier, mais ça n'est pas très propre.  
+Par défaut, sous distrib redhat, named et le system vont autoriser l'ajout de fichier dans d'autres dossier et de les includes dans `named.conf`  
+Ces fichiers seront déposés sous `/var/named/`
 
 On va commencer par faire écouter notre serveur sur son IP du réseau et lui autoriser à répondre aux requêtes de ce même réseau.
 On include également un fichier qu'on va créer plus tard. Il contiendra la déclaration de nos zones.
@@ -1060,10 +1065,10 @@ Modifiez donc les lignes suivantes:
 
 ```shell
 options {
-  listen-on port 53 { 127.0.0.1; 192.168.56.10; };
+  listen-on port 53 { 127.0.0.1; 10.11.0.199; };
 # listen-on-v6 port 53 { ::1; };
   [...]
-  allow-query { localhost; 192.168.56.0/24; };
+  allow-query { localhost; 10.11.0.0/24; };
   [...]
   include "/var/named/named.adsillh";
 ```
@@ -1078,9 +1083,9 @@ zone "adsillh.local" {
   type master;
   file "/var/named/data/db.adsillh.local";
 };
-zone "56.168.192.in-addr.arpa" {
+zone "0.0.11.10.in-addr.arpa" {
   type master;
-  file "/var/named/data/db.56.168.192";
+  file "/var/named/data/db.0.0.11.10";
 };
 ```
 
@@ -1106,16 +1111,16 @@ adsillh.local           IN SOA  adsillh.local. root.adsillh.local. (
                         NS      alma-srv.adsillh.local.
 $ORIGIN adsillh.local.
 $TTL 3600       ; 1 hour
-alma-srv                A       192.168.56.10
+alma-srv                A       10.11.0.199
 
 ```
-`vim /var/named/data/db.56.168.192`
+`vim /var/named/data/db.0.0.11.10`
 
 ```shell
 ; date file for zone adsillh.local
 $ORIGIN .
 $TTL 86400      ; 1 day
-56.168.192.in-addr.arpa IN SOA  adsillh.local. root.adsillh.local. (
+0.0.11.10.in-addr.arpa IN SOA  adsillh.local. root.adsillh.local. (
                                 5               ; serial
                                 10800      ; refresh (3 hours)
                                 3600       ; retry (1 hour)
@@ -1123,9 +1128,9 @@ $TTL 86400      ; 1 day
                                 38400      ; minimum (10 hours 40 minutes)
                                 )
                         NS      alma-srv.
-                        A       192.168.56.10
+                        A       10.11.0.199
 $ORIGIN 56.168.192.in-addr.arpa.
-10                      PTR     alma-srv.adsillh.local.
+199                      PTR     alma-srv.adsillh.local.
 $TTL 3600       ; 1 hour
 ``` 
 
@@ -1144,7 +1149,7 @@ nameserver 192.168.1.1
 Les commandes suivantes doivent fonctionner :
 
 ```shell
-# nslookup 192.168.56.10
+# nslookup 10.11.0.199
 # nslookup alma-srv
 ```
 
@@ -1155,7 +1160,7 @@ On va donc rajouter les 2 lignes dans notre déclaration de subnet:
 
 ```shell
         option domain-name "adsillh.local";
-        option domain-name-servers 192.168.56.10;
+        option domain-name-servers 10.11.0.199;
 ```
 
 On peut relancer le serveur dhcpd.
@@ -1163,11 +1168,11 @@ Depuis le client (après avoir récupérer un nouveau bail) :
 
 ```shell
 [root@alma-client ~]# nslookup alma-srv
-Server:         192.168.56.10
-Address:        192.168.56.1#53
+Server:         10.11.0.199
+Address:        10.11.0.199#53
 
 Name:   alma-srv.adsillh.local
-Address: 192.168.56.10
+Address: 10.11.0.199
 ```
 
 ## Réservation d'IP et de nom
@@ -1185,20 +1190,20 @@ D'abord pour le DNS
 ```shell
 
 ;Postes Clients
-alma-client	A	192.168.56.20
+alma-client	A	10.11.0.10
 ``` 	
 
-`vim /var/named/data/db.56.168.192`
+`vim /var/named/data/db.0.0.11.10`
 ```shell
 ;Postes Clients
-20                      PTR     alma-client.adsillh.local.
+10                      PTR     alma-client.adsillh.local.
 ```
 
 Et pour le DHCP, il faut ajouter cette ligne à la fin du fichier (avec la bonne adresse MAC)
 
 `vim /etc/dhcp/dhcpd.conf` 
 ```shell
-host alma-client { hardware ethernet aa:bb:cc:dd:ee:ff:gg; fixed-address 192.168.56.20; }
+host alma-client { hardware ethernet aa:bb:cc:dd:ee:ff:gg; fixed-address 10.11.0.10; }
 ```
 
 On peut relancer les 2 services (et la VM cliente) et tester. `nslookup alma-client` et `ping alma-client` devraient répondre.
