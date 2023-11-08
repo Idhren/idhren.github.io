@@ -1500,6 +1500,53 @@ Pour le coup, Dovecot va faire sa vie maintenant et on a juste besoin de le dém
 
 `systemctl enable --now dovecot`
 
+### Configuration client
+
+Attention, cette conf fonctionne avec l'installation Modoboa, mais n'a pas été testé avec la configuration postfix précédente
+
+On install "Mutt" et on le configure
+
+```bash
+$ dnf install mutt
+$ su - <USER>
+$ cd && touch .muttrc
+$ vim . muttrc
+```
+
+```shell
+# Adresse électronique de l'expéditeur
+set from = "idhren@adsillh.local"
+
+# Nom complet de l'expéditeur
+set realname = "Idhren"
+
+# Génération du champs from
+set use_from = yes
+
+# Lors d'une réponse, utiliser l'adresse originale à laquelle a été envoyé le mail
+set reverse_name
+
+# Définition des dossiers de travail de Mutt
+set spoolfile = /var/spool/mail/$USER
+set folder    = ~/mail
+set tmpdir    = ~/tmp
+
+# Editeur utilisé pour rédiger les mails
+set editor = "vim -c 'set tw=72' -c 'set wrap'"
+
+# On s'identifie dès le lancement de Mutt
+set spoolfile="imaps://idhren@adsillh.local@mail.adsillh.local/INBOX"
+# On fixe la boite de réception
+set folder="imaps://mail.adsillh.local/INBOX"
+# Les messages envoyés sont sauvegardé dans le dossier IMAP "Sent"
+set record="Sent"
+# Idem pour les brouillons
+set postponed="Drafts"
+
+set smtp_url = "smtp://idhren@adsillh.local@mail.adsillh.local:25"
+```
+
+
 ## Modoboa
 
 Il existe plusieurs solutions opensource plus "clef en main" qui se basent sur postfix et dovecot.  
