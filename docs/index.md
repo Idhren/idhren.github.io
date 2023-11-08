@@ -1613,3 +1613,13 @@ La aussi, il faudrait inscrire la clef publique dans un champs DNS pour l'utilis
 
 Chose de plus en plus répandu, le filtrage DNS par système de blacklist.   
 Comme son nom l'indique, il s'agit bêtement de bloquer l'accès à certaines url. Des outils opensource le font très bien sous forme de dnsmasq ou dnsproxy :  [Blocky](https://0xerr0r.github.io/blocky/v0.22/), [Pi-Hole](https://pi-hole.net/) ou encore [AdGuard](https://adguard.com/fr/adguard-home/overview.html)
+
+Quelques test à faire : 
+
+```bash
+dig TXT _dmarc.sudouest.fr
+dig TXT _dmarc.u-bordeaux.fr
+dig TXT _dmarc.gmail.com
+dig TXT 20161025._domainkey.gmail.com
+```
+
