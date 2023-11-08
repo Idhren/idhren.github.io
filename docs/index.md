@@ -1153,6 +1153,39 @@ Les commandes suivantes doivent fonctionner :
 # nslookup alma-srv
 ```
 
+### Précisions 
+
+Un peu plus d'infos sur la "SOA" : https://en.wikipedia.org/wiki/SOA_record   
+
+Et un peu plus d'infos sur les @ORIGIN et @ : https://bind9.readthedocs.io/en/v9.18.14/chapter3.html#the-at-sign  
+
+Par exemple : 
+
+```
+@   IN  SOA     adsillh.local. root.adsillh.local. (
+```
+
+Est équivalent à :
+
+adsillh.local IN    SOA     adsillh.local. root.adsillh.local. (
+```
+
+et
+
+```
+ns.icann.org IN SOA ns.icann.org. no
+
+```
+$ORIGIN example.com.
+WWW     CNAME   MAIN-SERVER
+```
+
+Est équivalent à
+
+```
+WWW.EXAMPLE.COM. CNAME MAIN-SERVER.EXAMPLE.COM.
+```
+
 ## Modification du DHCP
 
 Pour que nos client DHCP sachent qu'on ai un serveur DNS à interroger, il faut leur dire dans les baux.
@@ -1330,36 +1363,6 @@ $ORIGIN 56.168.192.in-addr.arpa.
 10                      PTR     alma-srv.adsillh.local.
 10                      PTR     mail.adsillh.local.
 100                     PTR     alma-client.adsillh.local.
-```
-
-Un peu plus d'infos sur la "SOA" : https://en.wikipedia.org/wiki/SOA_record   
-Et un peu plus d'infos sur les @ORIGIN et @ : https://bind9.readthedocs.io/en/v9.18.14/chapter3.html#the-at-sign  
-
-Par exemple : 
-
-```
-@   IN  SOA     adsillh.local. root.adsillh.local. (
-```
-
-Est équivalent à :
-
-adsillh.local IN    SOA     adsillh.local. root.adsillh.local. (
-```
-
-et
-
-```
-ns.icann.org IN SOA ns.icann.org. no
-
-```
-$ORIGIN example.com.
-WWW     CNAME   MAIN-SERVER
-```
-
-Est équivalent à
-
-```
-WWW.EXAMPLE.COM. CNAME MAIN-SERVER.EXAMPLE.COM.
 ```
 
 On doit aussi créer les règles au niveau parefeu
