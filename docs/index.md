@@ -1332,6 +1332,36 @@ $ORIGIN 56.168.192.in-addr.arpa.
 100                     PTR     alma-client.adsillh.local.
 ```
 
+Un peu plus d'infos sur la "SOA" : https://en.wikipedia.org/wiki/SOA_record   
+Et un peu plus d'infos sur les @ORIGIN et @ : https://bind9.readthedocs.io/en/v9.18.14/chapter3.html#the-at-sign  
+
+Par exemple : 
+
+```
+@   IN  SOA     adsillh.local. root.adsillh.local. (
+```
+
+Est équivalent à :
+
+adsillh.local IN    SOA     adsillh.local. root.adsillh.local. (
+```
+
+et
+
+```
+ns.icann.org IN SOA ns.icann.org. no
+
+```
+$ORIGIN example.com.
+WWW     CNAME   MAIN-SERVER
+```
+
+Est équivalent à
+
+```
+WWW.EXAMPLE.COM. CNAME MAIN-SERVER.EXAMPLE.COM.
+```
+
 On doit aussi créer les règles au niveau parefeu
 
 ```shell
@@ -1467,11 +1497,116 @@ Pour le coup, Dovecot va faire sa vie maintenant et on a juste besoin de le dém
 
 `systemctl enable --now dovecot`
 
+## Modoboa
+
+Il existe plusieurs solutions opensource plus "clef en main" qui se basent sur postfix et dovecot.  
+C'est le cas notemment de [Mododoa](https://modoboa.org/fr/). C'est un serveur de messagerie Open Source, écrit en python.
+Sa documentation est disponible à cette addresse : https://modoboa.readthedocs.io/en/latest/
+
+Modoba se base sur différents outils. Certains qu'on a vu, d'autres qu'on va survoler:  
+
+* Postfix : Serveur SMTP qu'on a déjà vu  
+* Dovecot : Serveur POP/IMAP  
+* PostgreSQL : Serveur de BDD (On peut aussi choisir d'autres BDD comme MySQL ou SQLite)  
+* Amavis : Un frontend permettant de filtrer les messages (spam, virus, etc.)  
+
+Il permet également d'implémenter des protection dite de réputation qu'on verra plus bas.  
+
+Pour le tester, on va suivre leur "Recommended way" pour l'installation. A savoir un script clef en main qui s'occupe de tout.  
+Attention néanmoins, ce genre de pratique est bonne pour tester une solution dans un lab de test, mais lors d'une installation dédié à de la production, on préfère faire une installation manuelle qu'on maitrisera de bout en bout.  
+
+Le script d'auto-install n'étant compabile que sous Debian. On va donc s'en installer une. On en profitera également pour regarder un peu les différences avec une base RedHat ;)  
+
+Un fois la Debian installée : 
+
+```bash
+> git clone https://github.com/modoboa/modoboa-installer
+> cd modoboa-installer
+> sudo ./run.py <notre domain>
+``` 
+
+Il faut par contre avoir correctement configuré notre serveur DNS, notemment les champs A et MX.  
+
+```shell
+@   			MX	0 mail.adsillh.local.
+mail			MX	0 mail.adsillh.local.
+
+mail			A	192.168.56.2
+
+```
+
+```shell
+2			PTR	mail.adsillh.local.
+```
+
+Avec "dig" on doit avoir quelque chose du genre :
 
 
+```shell
+[root@alma-client ~]# dig MX adsillh.local +short
+0 mail.adsillh.local.
+[root@alma-client ~]# dig MX mail.adsillh.local +short
+0 mail.adsillh.local.
+[root@alma-client ~]# dig A mail.adsillh.local +short
+192.168.56.2
+```
 
+Une fois installé, le service "uwsgi" devrait tourner :
 
+```bash
+root@debian-srv:~# systemctl status uwsgi
+● uwsgi.service - LSB: Start/stop uWSGI server instance(s)
+     Loaded: loaded (/etc/init.d/uwsgi; generated)
+     Active: active (running) since Wed 2023-11-08 18:43:15 CET; 35min ago
+       Docs: man:systemd-sysv-generator(8)
+    Process: 617 ExecStart=/etc/init.d/uwsgi start (code=exited, status=0/SUCCESS)
+      Tasks: 6 (limit: 4633)
+     Memory: 129.5M
+        CPU: 772ms
+     CGroup: /system.slice/uwsgi.service
+             ├─ 769 /usr/bin/uwsgi --ini /usr/share/uwsgi/conf/default.ini --ini /etc/uwsgi/apps-enabled/automx_instance.ini --daemonize /var/log/uwsgi/app/automx_instance.log
+             ├─ 896 /usr/bin/uwsgi --ini /usr/share/uwsgi/conf/default.ini --ini /etc/uwsgi/apps-enabled/modoboa_instance.ini --daemonize /var/log/uwsgi/app/modoboa_instance.log
+             ├─ 921 /usr/bin/uwsgi --ini /usr/share/uwsgi/conf/default.ini --ini /etc/uwsgi/apps-enabled/automx_instance.ini --daemonize /var/log/uwsgi/app/automx_instance.log
+             ├─ 922 /usr/bin/uwsgi --ini /usr/share/uwsgi/conf/default.ini --ini /etc/uwsgi/apps-enabled/automx_instance.ini --daemonize /var/log/uwsgi/app/automx_instance.log
+             ├─1503 /usr/bin/uwsgi --ini /usr/share/uwsgi/conf/default.ini --ini /etc/uwsgi/apps-enabled/modoboa_instance.ini --daemonize /var/log/uwsgi/app/modoboa_instance.log
+             └─1504 /usr/bin/uwsgi --ini /usr/share/uwsgi/conf/default.ini --ini /etc/uwsgi/apps-enabled/modoboa_instance.ini --daemonize /var/log/uwsgi/app/modoboa_instance.log
 
+nov. 08 18:43:14 debian-srv systemd[1]: Starting LSB: Start/stop uWSGI server instance(s)...
+nov. 08 18:43:15 debian-srv uwsgi[617]: Starting app server(s): uwsgi -> . . done.
+nov. 08 18:43:15 debian-srv systemd[1]: Started LSB: Start/stop uWSGI server instance(s).
+```
 
+Et la page d'admin/webmail sera joignable à l'addresse : https://mail.adsillh.local (Login : admin // Password : password )   
 
+## Reputation Protection
 
+Pour lutter contre les spam ett le spoofing, il existe différentes solutions:   
+
+* SPF : Sender Policy Framework : Une norme de vérification. Elle permet de vérifier via les enregistrement DNS qu'un mail @adsillh.local a bien été envoyé par un serveur de ce domaine.  
+
+L'activation du SPF passe par un champs "TXT" dans la configuration DNS :  
+
+```shell
+$ dig TXT u-bordeaux.fr
+[...]
+u-bordeaux.fr.		86400	IN	TXT	"v=spf1 ip4:147.210.0.0/16 ip6:2001:660:6101::/48 include:spf.taonix.net include:eu.transmail.net ~all"
+[...]
+```
+
+Là, l'université de bordeaux habite les mails qui proviennent des plage d'ip mentionnée. Les include permette d'autoriser d'autres noms de domaine (généralement d'autres FAI).   
+Le `~all` laisse passer, mais va taguer les mail. C'est un outil de débugage.  
+
+* DMARC : Domain-based Message Athentication, Reporting and Conformance
+
+DMARC va plus loins que SPF en donnant des informations aux destinataire sur le traitement à faire des mails non conforme.  
+Suivant les paramètres, on pourra proposer aux destinataires de refuser le mail, de le mettre en quarantaine, d'envoyer un rapport au propriétaire du domaine expéditeur, etc.  
+
+Plus d'infos : https://fr.wikipedia.org/wiki/DMARC#Sp%C3%A9cifications  
+
+DKIM est une clef qui va permettre d'identifier le serveur mail. Elle peut être générée par OpenDKIM (inclue dans l'installation de Modoboa).  
+La aussi, il faudrait inscrire la clef publique dans un champs DNS pour l'utiliser.  
+
+* DNSBL : DNS Black List
+
+Chose de plus en plus répandu, le filtrage DNS par système de blacklist.   
+Comme son nom l'indique, il s'agit bêtement de bloquer l'accès à certaines url. Des outils opensource le font très bien sous forme de dnsmasq ou dnsproxy :  [Blocky](https://0xerr0r.github.io/blocky/v0.22/), [Pi-Hole](https://pi-hole.net/) ou encore [AdGuard](https://adguard.com/fr/adguard-home/overview.html)
