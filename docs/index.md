@@ -1869,9 +1869,26 @@ On va faire simple :
 - On déploie un fichier text sur une machine spécifique
 
 ```bash
-cd /etc/puppetlabs/code/environments/production/manifests
+cd /etc/puppetlabs/code/environments/production/
 
-# cat site.pp 
+[root@alma-srv production]# tree 
+.
+├── data
+├── environment.conf
+├── hiera.yaml
+├── manifests
+│   └── site.pp
+└── modules
+    └── module_test
+        ├── files
+        │   └── conf_de_test.conf
+        └── manifests
+            └── init.pp
+
+6 directories, 5 files
+
+
+# cat manifests/site.pp 
 node default {
   # Install the Puppet agent
   package { 'puppet':
@@ -1885,11 +1902,15 @@ node default {
   }
 }
 
-# mkdir alma-client.adsillh.local
-# cat alma-client.pp
-node 'alma-client.adsillh.local' {
+# cat modules/module_test/manifests/init.pp
+class module_test {
   file {'/tmp/test.txt':
   content => "ceci est un test",
+  ensure  => 'present',
+  }
+  file {'/tmp/conf_de_test':
+  ensure => present,
+  source => 'puppet:///modules/module_test/conf_de_test.conf',
   }
 }
 ``` 
