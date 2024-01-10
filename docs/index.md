@@ -1670,3 +1670,232 @@ dig TXT _dmarc.gmail.com
 dig TXT 20161025._domainkey.gmail.com
 ```
 
+# Gestion de configuration
+
+La gestion de configuration c'est un procédé qui permet de maintenir des systèmes dans un état donné. On écrit un état. Si la machine client ne correspond pas ou plus. L'outil de configuration va aller modifier la configuration pour qu'elle soit de nouveau iso.   
+Pour un administrateur système, cela permet de centraliser la configuration de plusieurs machines à un endroit central. Cela éviter les redites, les doublons... Ca ouvre la possible d'automatiser des tâches autrements que pas des simples scripts.  
+
+Ces outils rentrent dans la catégorie dite d'IAAC pour Infrastructure As A code. En gros, on écris notre infrastruce dans des fichiers, en utilisant un language lisible.   
+Ces fichiers sont interprété et compilés par le soft pour exécuter des actions plus complexes.
+
+Il existe deux type d'outils:
+- Déploiement basé sur du push
+- Déploiement basé sur du pull
+
+En push, c'est le serveurs de configuration qui va pousser la configuration. Pas de client n'est à installer sur les machines distantes.  
+Ansible, Salt fonctionnent en mode push.   
+
+En pull, c'est le client qui va demander régulièrement sa configuration. Si elle diffère, le client applique la configuration.   
+C'est comme ça que fonctionnent Puppet et Chef.   
+
+## Puppet
+
+Puppet est donc un des systèmes de gestion de conf les plus répandus, et ancien. Il est centralisé et fonctionne en mode pull. Il faut donc installer un agent sur les machines clientes.   
+Il est open source et dispose d'une très grande communauté active.   
+
+Il existe en deux version. Un version open source accessible à tous sous licence Apache. Une version Enterprise, commercial, qui offre plus de fonctionnalité, notamment des fonctionnalités d'orchestration et de reporting.
+
+Puppet est écris en Ruby et il utilise son propre DSL (Domain Specific Language; sa propre syntaxe) pour décrire les configurations.
+Ce language est déclaratif. Normalement, en dev, vous avez vu les différents paradigmes qui existe (Imperatif, Declaratif, Fonctionnel et Orienté Objet).   
+En déclaratif, puppet va donc demander au système quoi faire, mais ne lui dirat pas comment.
+
+Par exemple, pour créer un utilisateur. En bash, on fera quelque chose du genre :
+
+```bash
+#!/bin/bash
+if [ $(id -u) -eq 0 ]; then
+  $username=puppetuser
+  read -s -p "Enter password : " password
+  Egrep "^$username" /etc/passwd >/dev/null
+  if [ $? -eq 0 ]; then
+    echo "$username exists!"
+    exit 1
+  else
+    useradd -m -p $password $username
+    [ $? -eq O ] && echo "User has been added to the system!" || echo "Failed to add a user!"
+  fi
+fi
+``` 
+
+Avec puppet et en déclaratif, ça donnera ça : 
+
+```puppet
+user { "puppetuser":
+  ensure => "present",
+}
+```
+
+C'est quand même plus simple...
+
+
+### Comment ça marche puppet
+
+Puppet ayant besoin d'agent installés sur la machine, il fonctionne donc en mode "Master / Client".   
+La connexion est sécurisée par un mechanisme de certificat signé par le serveur Puppet.   
+Une fois la connexion établie, l'agent va envoyer au serveur tout un paquet d'informations appelées "facts". On verra un peu plus tard, mais ça va contenir le nom de l'hôte, son adresse ip, des infos sur le kernel, etc.   
+Le serveur va se servir de ces facts pour savoir a qui il a faire et envoyer les informations de configuration qui se contenu dans un "catalogue".
+Le client recevra ce catalogue et s'occupera de se mettre en conformité.   
+
+### Puppet et son lexique
+
+Il existe 4 grands termes a connaitre:
+- Resources   
+Les resources sont des fonctions puppet qui vont permettre de réaliser différentes opérations.   
+Par exemple, "user" qu'on a vu plus tôt est une resource.   
+On a 3 types de resources:
+ - Core/Built-in : Resource qui sont livré avec puppet. Ecrites et maintenues par l'editeur.
+ - Defined : Resources écrites avec la syntax DSL
+ - Custom : Resources très spécifiques, écrites en ruby directement.
+- Class   
+Les classes sont une combinaison de plusieurs resources.   
+- Manifest   
+Un manifest est un fichier contenant les instructions. Il a .pp comme extension, et c'est la dedans qu'on écrire la plupart des notre code.
+- Modules   
+Un module est une combinaison de manifest.  
+
+Plusieurs commandes en vrac :
+
+``` bash
+puppet resource –types
+puppet describe <resource type name>
+puppet --help
+puppet parser validate <file.pp>
+puppet agent --noop
+```
+
+Un exemple de class :
+```puppet
+# Class installation ntp
+## Installation
+class ntpconfig { # on déclare notre class
+  package {"ntp": # ici on appel la resource package
+  ensure => "present", # on appel la class "ensure" pour demander à l'agent d'installer le package
+}
+## configuration
+file {"/etc/ntp.conf":
+  ensure  => "present",
+  content => "server 0.centos.pool.ntp.org iburst\n",
+}
+service {"ntpd":
+  ensure => "running",
+}
+```
+
+### Mise en pratique
+
+Pour bosser sur la pratique, on va repartir sur 2 VM.   
+Idéalement, on veut 2 VM vierges, sous Alma linux 8   
+
+#### Côté serveur
+
+On ajoute le mirror mis à dispo par puppetlabs:   
+https://yum.puppet.com/puppet7-release-el-8.noarch.rpm
+
+Normalement, vous savez comment faire ;). dnf et rpm sont vos amis.
+
+Ensuite, on peut chercher et installer le serveur. Puis le démarrer.   
+La aussi, normalement, vous savez faire !
+
+Il faudra aussi autoriser le traffic tcp ;)
+
+Tout d'abord, on va compléter notre PATH. Puppet install ses binaires sous /opt/puppetlabs, mais ne renseigne pas le $PATH automatiquement   
+```bash
+echo 'export PATH=$PATH:/opt/puppetlabs/bin' | tee -a ~/.bashrc
+source ~/.bashrc
+```
+On va aller modifier la conf de notre serveur :
+```bash
+vim /etc/puppetlabs/puppet/puppet.conf
+```
+```bash
+[main]
+certname = alma-srv.adsillh.local
+server = alma-srv.adsillh.local
+environment = production
+runinterval = 1h
+```
+Et on peut d'ores et déjà tester que son propre agent réponde bien :
+```bash
+puppet agent --test
+```
+
+Comme dit rapidement dans la présentation de puppet, on va utiliser un système de certificat pour authentifier les communications entre chaques machines.   
+Puppet le fait tout seul comme un grand, vous pouvez déjà voir le certificat du serveur avec la commande suivante :   
+```bash
+puppetserver ca list --all
+```
+
+#### Côté Client
+
+Il faut la aussi ajouter le mirror et installer le paquet correspondant à l'agent.   
+Il faudra également amender son $PATH comme pour le serveur.
+
+Au niveau de la conf, ça donne ça : 
+```bash
+vim /etc/puppetlabs/puppet/puppet.conf
+```
+```bash
+[main]
+ssldir = /var/lib/puppet/ssl
+vardir = /var/lib/puppet
+cadir = /var/lib/puppet/ssl/ca
+
+[agent]
+server=alma-srv.adsillh.local
+ca_server=alma-srv.adsillh.local
+```
+
+Et maintenant un `puppet agent -t` devrait renvoyer quelque chose...   
+
+Il va donc falloir signer le certificat côté serveur pour autoriser la communication.   
+```bash
+man puppetserver ?
+```
+
+#### Arborescences, pratiques, normes, etc...
+
+On a donc nos 2 machines qui communiques ensemble. Cool !   
+Maintenant, on va prendre le temps rapidement de voir l'arborescence et causer un peu normes et pratiques...   
+
+Sur notre serveur, la base de tout est dans `/etc/puppetlabs/code/` (On ne prendra pas le temps de regarder ce qu'il y a dans les autres dossiers...)   
+On va notamment y trouver un dossier `environments/production/`. C'est là dedans qu'on va travailler.   
+On verra plus tard toutes les normes, bonnes pratiques, et cie.   
+
+#### Premiers déploiements
+
+Une fois la communication faites. On va pouvoir faire nos premiers déploiements de conf.   
+On va faire simple :   
+- On s'assure que l'agent puppet tourne sur toutes nos machines
+- On déploie un fichier text sur une machine spécifique
+
+```bash
+cd /etc/puppetlabs/code/environments/production/manifests
+
+# cat site.pp 
+node default {
+  # Install the Puppet agent
+  package { 'puppet':
+    ensure => installed,
+  }
+
+  # Start the Puppet agent
+  service { 'puppet':
+    ensure => running,
+    enable => true,
+  }
+}
+
+# mkdir alma-client.adsillh.local
+# cat alma-client.pp
+node 'alma-client.adsillh.local' {
+  file {'/tmp/test.txt':
+  content => "ceci est un test",
+  }
+}
+``` 
+
+Et on peut tester ce que ça donne en lançant les commandes suivantes sur nos 2 machines `puppet agent -t --noop` et `puppet agent -t` 
+
+Amusez vous a installer des trucs ! (dhcp, dns, vim, httpd, etc...)
+
+
