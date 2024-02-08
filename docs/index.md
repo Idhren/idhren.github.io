@@ -2135,6 +2135,7 @@ pwpolicy luks --minlen=6 --minquality=1 --notstrict --nochanges --notempty
 ```
 
 ```
+[root@puppet production]# cat modules/pxe_adsillh/files/grub.cfg 
 function load_video {
 	insmod efi_gop
 	insmod efi_uga
