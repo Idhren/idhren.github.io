@@ -1919,7 +1919,69 @@ Et on peut tester ce que ça donne en lançant les commandes suivantes sur nos 2
 
 Amusez vous a installer des trucs ! (dhcp, dns, vim, httpd, etc...)
 
-##### Pxe
+#### Module DHCP
+
+```
+[root@puppet production]# tree modules/dhcpd_adsillh/
+modules/dhcpd_adsillh/
+├── files
+│   └── dhcpd.conf
+└── manifests
+    └── init.pp
+
+```
+
+```
+[root@puppet production]# cat modules/dhcpd_adsillh/files/dhcpd.conf
+
+default-lease-time 86400; #24h bail
+authoritative;
+
+# On déclare le réseau
+
+subnet 192.168.56.0 netmask 255.255.255.0 {
+        range 192.168.56.100 192.168.56.150; # de 100 a 150
+        option routers 192.168.56.10;
+        option domain-name-servers 192.168.56.10;
+        option domain-name "adsillh.local";
+	next-server 192.168.56.21;
+	filename "uefi/shimx64.efi";
+}
+
+```
+
+```
+[root@puppet production]# cat modules/dhcpd_adsillh/manifests/init.pp 
+class dhcpd_adsillh {
+  package { 'dhcp-server':
+    ensure => installed,
+  }
+  service { 'dhcpd':
+    ensure => running,
+    enable => true
+  }
+  file {'/etc/dhcp/dhcpd.conf':
+    ensure => present,
+    source => 'puppet:///modules/dhcpd_adsillh/dhcpd.conf',
+  }
+}
+```
+
+```
+# Apply some things somewhere
+
+
+node serveur02.adsillh.local {
+  include pxe_adsillh
+  include dhcpd_adsillh
+  package { 'net-tools':
+    ensure => present,
+  }
+}
+```
+
+
+#### Pxe
 
 Documentation Fedora : https://docs.fedoraproject.org/en-US/fedora/f36/install-guide/advanced/Network_based_Installations/  
 Repo almalinux : https://repo.almalinux.org/almalinux/8.8/BaseOS/x86_64/os/  
