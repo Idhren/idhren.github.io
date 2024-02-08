@@ -1919,4 +1919,11 @@ Et on peut tester ce que ça donne en lançant les commandes suivantes sur nos 2
 
 Amusez vous a installer des trucs ! (dhcp, dns, vim, httpd, etc...)
 
+##### Pxe
+
+Documentation Fedora : https://docs.fedoraproject.org/en-US/fedora/f36/install-guide/advanced/Network_based_Installations/
+Repo almalinux : https://repo.almalinux.org/almalinux/8.8/BaseOS/x86_64/os/
+Emplacement des fichiers shim : /boot/efi/EFI/almalinux/
+
+
 
