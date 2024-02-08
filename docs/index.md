@@ -1988,4 +1988,191 @@ Repo almalinux : https://repo.almalinux.org/almalinux/8.8/BaseOS/x86_64/os/
 Emplacement des fichiers shim : /boot/efi/EFI/almalinux/
 
 
+#### Configurations
 
+```
+root@puppet production]# tree
+.
+├── data
+│   ├── common.yaml
+│   └── nodes
+│       ├── serveur01.adsillh.local.yaml
+│       └── serveur02.adsillh.local.yaml
+├── environment.conf
+├── hiera.yaml
+├── manifests
+│   ├── nodes.pp
+│   └── site.pp
+└── modules
+    ├── dhcpd_adsillh
+    │   ├── files
+    │   │   └── dhcpd.conf
+    │   └── manifests
+    │       └── init.pp
+    ├── module_test
+    │   ├── files
+    │   │   └── conf_de_test.conf
+    │   └── manifests
+    │       └── init.pp
+    └── pxe_adsillh
+        ├── files
+        │   ├── boot_menu
+        │   ├── boot_msg
+        │   ├── grub.cfg
+        │   └── kickstart.conf
+        └── manifests
+            └── init.pp
+
+13 directories, 16 files
+```
+
+```
+[root@puppet production]# cat modules/pxe_adsillh/manifests/init.pp 
+class pxe_adsillh (
+  $apps     = [ 'tftp-server', 'wget', 'httpd', 'curl', 'syslinux'],
+  $folders  = [ '/var/lib/tftpboot/','/var/lib/tftpboot/uefi/', '/var/www/html/kickstart' ]
+)
+{
+  package { $apps:
+    ensure => installed,
+  }
+  service { ['tftp', 'httpd']:
+    ensure => running,
+    enable => true
+  }
+  file { $folders:
+    ensure  => directory,
+  }
+  exec { 'get-vmlinuz':
+    command =>  'curl https://repo.almalinux.org/almalinux/8.8/BaseOS/x86_64/os/images/pxeboot/vmlinuz -o /var/lib/tftpboot/vmlinuz',
+    path    => [ "/bin/", "/sbin/" , "/usr/bin/", "/usr/sbin/" ],
+    unless  => '/usr/bin/test -f /var/lib/tftpboot/vmlinuz',
+    require => Package[$apps],
+  }
+  exec { 'get-inird':
+    command => 'curl https://repo.almalinux.org/almalinux/8.8/BaseOS/x86_64/os/images/pxeboot/initrd.img -o /var/lib/tftpboot/initrd.img',
+    path    => [ "/bin/", "/sbin/" , "/usr/bin/", "/usr/sbin/" ],
+    unless  => '/usr/bin/test -f /var/lib/tftpboot/initrd.img',
+    require => Package[$apps],
+  }
+  file {'conf_kickstart':
+    notify => Service['httpd'],
+    ensure => present,
+    path   => '/var/www/html/kickstart/kickstart.conf',
+    source => 'puppet:///modules/pxe_adsillh/kickstart.conf',
+  }
+  file { 'grub_menu':
+    notify => Service['tftp'],
+    ensure => present,
+    path   => '/var/lib/tftpboot/uefi/grub.cfg',
+    source => 'puppet:///modules/pxe_adsillh/grub.cfg',
+  }
+
+  exec { 'set-apache-permission':
+    command => 'chown -R apache:apache .',
+    cwd     => '/var/www/html',
+    path    => [ "/bin/", "/sbin/" , "/usr/bin/", "/usr/sbin/" ],
+  }
+  exec { 'open-http-port':
+    command => 'firewall-cmd --zone=public --add-service={http,tftp,dhcp} --permanent && firewall-cmd --reload',
+    path    => [ "/bin/", "/sbin/" , "/usr/bin/", "/usr/sbin/" ],
+  }
+  exec { 'get-shim-files':
+   command => 'cp /boot/efi/EFI/almalinux/shimx64.efi /var/lib/tftpboot/uefi/',
+   path    => [ "/bin/", "/sbin/" , "/usr/bin/", "/usr/sbin/" ],
+  }
+}
+```
+```
+[root@puppet production]# cat modules/pxe_adsillh/files/kickstart.conf 
+#version=RHEL8
+# Use graphical install
+#graphical
+text
+
+%packages
+@^minimal-environment
+kexec-tools
+
+%end
+
+# Keyboard layouts
+keyboard --xlayouts='fr (oss)'
+# System language
+lang fr_FR.UTF-8
+
+# Network information
+network  --bootproto=dhcp --device=enp0s3 --ipv6=off --activate
+#network  --bootproto=dhcp --device=enp0s8 --ipv6=off --no-activate --nodefroute
+network  --hostname=localhost.localdomain
+
+# Use Network installation media
+#url -url="http://192.168.56.20/alma/
+url --url=https://repo.almalinux.org/almalinux/8.8/BaseOS/x86_64/os/
+# Run the Setup Agent on first boot
+firstboot --enable
+
+ignoredisk --only-use=sda
+autopart
+# Partition clearing information
+clearpart --all
+
+# System timezone
+timezone Europe/Paris --isUtc
+
+# Root password
+rootpw --iscrypted $6$HlTL3Zib1bDZxZ7e$oCFGcb1iCuaxXK/idNaAFpoP5s/wicAjDYoV2zcxx41m/xm70rvRwAbWC/.8Wxbjqd7IUPz6KDfN6YRhcrhKC/
+
+%addon com_redhat_kdump --enable --reserve-mb='auto'
+
+%end
+
+%anaconda
+pwpolicy root --minlen=6 --minquality=1 --notstrict --nochanges --notempty
+pwpolicy user --minlen=6 --minquality=1 --notstrict --nochanges --emptyok
+pwpolicy luks --minlen=6 --minquality=1 --notstrict --nochanges --notempty
+%end
+```
+
+```
+function load_video {
+	insmod efi_gop
+	insmod efi_uga
+	insmod video_bochs
+	insmod video_cirrus
+	insmod all_video
+}
+
+load_video
+set gfxpayload=keep
+insmod gzio
+
+menuentry 'Exit this grub' {
+        exit
+}
+
+menuentry 'Install Alma - ks'  --class red --class gnu-linux --class gnu --class os {
+        linux /vmlinuz ip=dhcp inst.ks=http://192.168.56.21/kickstart/kickstart.conf
+        initrd initrd.img
+
+}
+```
+
+
+```
+[root@puppet production]# cat modules/dhcpd_adsillh/files/dhcpd.conf 
+
+default-lease-time 86400; #24h bail
+authoritative;
+
+# On déclare le réseau
+
+subnet 192.168.56.0 netmask 255.255.255.0 {
+        range 192.168.56.100 192.168.56.150; # de 100 a 150
+        option routers 192.168.56.10;
+        option domain-name-servers 192.168.56.10;
+        option domain-name "adsillh.local";
+	next-server 192.168.56.21;
+	filename "uefi/shimx64.efi";
+}
+```
