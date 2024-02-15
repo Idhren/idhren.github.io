@@ -1743,9 +1743,9 @@ Il existe 4 grands termes a connaitre:
 Les resources sont des fonctions puppet qui vont permettre de réaliser différentes opérations.   
 Par exemple, "user" qu'on a vu plus tôt est une resource.   
 On a 3 types de resources:
- - Core/Built-in : Resource qui sont livré avec puppet. Ecrites et maintenues par l'editeur.
- - Defined : Resources écrites avec la syntax DSL
- - Custom : Resources très spécifiques, écrites en ruby directement.
+  - Core/Built-in : Resource qui sont livré avec puppet. Ecrites et maintenues par l'editeur.
+  - Defined : Resources écrites avec la syntax DSL
+  - Custom : Resources très spécifiques, écrites en ruby directement.
 - Class   
 Les classes sont une combinaison de plusieurs resources.   
 - Manifest   
@@ -1849,7 +1849,7 @@ Et maintenant un `puppet agent -t` devrait renvoyer quelque chose...
 
 Il va donc falloir signer le certificat côté serveur pour autoriser la communication.   
 ```bash
-man puppetserver ?
+puppetserver --help
 ```
 
 #### Arborescences, pratiques, normes, etc...
@@ -1857,20 +1857,11 @@ man puppetserver ?
 On a donc nos 2 machines qui communiques ensemble. Cool !   
 Maintenant, on va prendre le temps rapidement de voir l'arborescence et causer un peu normes et pratiques...   
 
-Sur notre serveur, la base de tout est dans `/etc/puppetlabs/code/` (On ne prendra pas le temps de regarder ce qu'il y a dans les autres dossiers...)   
+Sur notre serveur, la base de tout est dans `/etc/puppetlabs/code/`  
 On va notamment y trouver un dossier `environments/production/`. C'est là dedans qu'on va travailler.   
-On verra plus tard toutes les normes, bonnes pratiques, et cie.   
+`production` est un environement. On peut en avoir plusieurs (Qualif, préprod, dev, etc.)
 
-#### Premiers déploiements
-
-Une fois la communication faites. On va pouvoir faire nos premiers déploiements de conf.   
-On va faire simple :   
-- On s'assure que l'agent puppet tourne sur toutes nos machines
-- On déploie un fichier text sur une machine spécifique
-
-```bash
-cd /etc/puppetlabs/code/environments/production/
-
+```
 [root@alma-srv production]# tree 
 .
 ├── data
@@ -1884,33 +1875,50 @@ cd /etc/puppetlabs/code/environments/production/
         │   └── conf_de_test.conf
         └── manifests
             └── init.pp
+```
 
-6 directories, 5 files
+Puppet étant très permissif, on peut faire un peu ce qu'on veut. Mais généralement, voila à quoi corresponderont les dossiers
 
+- data: On trouvera aussi des fichiers .yaml qui contiendront des données/variables pour nos hôtes et modules.
+- environnement.conf : Fichier de configuration de votre environnement. On y indique le dossier de modules, les manifest, etc.
+- hiera.yaml : hiera pour hierarchie. On indique ici l'ordre dans lequel puppet va chercher des configuration dans le dossier `data`.
+- manifests : nos fichiers manifests de base. Dedans, on trouvera un site.pp qui permettra de définir nos hôtes, notre site, etc.
+- modules : dossier de référence pour tous les modules de notre environnement.
+
+#### Premiers déploiements
+
+Une fois la communication faites. On va pouvoir faire nos premiers déploiements.   
+On va faire simple :   
+- On s'assure que l'agent puppet tourne sur toutes nos machines
+- On déploie un fichier text sur une machine spécifique
+
+```bash
+cd /etc/puppetlabs/code/environments/production/
 
 # cat manifests/site.pp 
-node default {
+node default { # Default englobe tous les hôtes. Utile pour une configuration par défault.
   # Install the Puppet agent
-  package { 'puppet':
-    ensure => installed,
+  package { 'puppet': # Nom du paquet. Doit correspondre au "provider". Par défaut, et sur une Redhat, c'est DNF)
+    ensure => installed, # On s'assure qu'il soit installé
   }
 
   # Start the Puppet agent
-  service { 'puppet':
-    ensure => running,
-    enable => true,
+  service { 'puppet': # Le nom du service
+    ensure => running, # On s'assure qu'il soit démarrré. Equivalent d'un systemctl start puppet
+    enable => true, # On s'assure qu'il soit à l'état "enable". Equivalent d'un systemctl enable puppet
   }
+  include module_test, # On inclue le module "module_test" pour ce node
 }
 
 # cat modules/module_test/manifests/init.pp
-class module_test {
-  file {'/tmp/test.txt':
-  content => "ceci est un test",
+class module_test { # Un classe, contenant différentes ressources
+  file {'/tmp/test.txt': # Le nom & emplacement de notre fichier
+  content => "ceci est un test", # Son contenu
   ensure  => 'present',
   }
-  file {'/tmp/conf_de_test':
+  file {'/tmp/conf_de_test': 
   ensure => present,
-  source => 'puppet:///modules/module_test/conf_de_test.conf',
+  source => 'puppet:///modules/module_test/conf_de_test.conf', # Ici, on va récupérer un fichier depuis notre serveur puppet.
   }
 }
 ``` 
@@ -1921,6 +1929,11 @@ Amusez vous a installer des trucs ! (dhcp, dns, vim, httpd, etc...)
 
 #### Module DHCP
 
+Dans les précédant cours, on avait installé manuellement un serveur DHCP.   
+Avec le peu qu'on a vu de puppet, on peut maintenant le faire sans toucher à notre (futur) serveur DHCP.
+
+On créer un module : 
+
 ```
 [root@puppet production]# tree modules/dhcpd_adsillh/
 modules/dhcpd_adsillh/
@@ -1930,6 +1943,8 @@ modules/dhcpd_adsillh/
     └── init.pp
 
 ```
+
+On va créer notre fichier dhcpd.conf :
 
 ```
 [root@puppet production]# cat modules/dhcpd_adsillh/files/dhcpd.conf
@@ -1945,10 +1960,12 @@ subnet 192.168.56.0 netmask 255.255.255.0 {
         option domain-name-servers 192.168.56.10;
         option domain-name "adsillh.local";
 	next-server 192.168.56.21;
-	filename "uefi/shimx64.efi";
+	filename "uefi/shimx64.efi"; # Information pour pxe/kickstart
 }
 
 ```
+
+Contenu du module : 
 
 ```
 [root@puppet production]# cat modules/dhcpd_adsillh/manifests/init.pp 
@@ -1967,28 +1984,70 @@ class dhcpd_adsillh {
 }
 ```
 
+Comme on veut installer le serveur dhcp sur un machine spécifique, il convient de modifier le fichier site.pp pour déclarer et indiquer comment on veut configurer le serveur cible : 
+
 ```
-# Apply some things somewhere
+[root@puppet production]# vim manifests/site.pp
 
+[...]
 
-node serveur02.adsillh.local {
-  include pxe_adsillh
-  include dhcpd_adsillh
-  package { 'net-tools':
+node serveur02.adsillh.local { #  On créer une entrée pour notre hote
+  include pxe_adsillh # On include les module qu'on veut appliquer à l'hôte
+  include dhcpd_adsillh # On include les module qu'on veut appliquer à l'hôte
+  package { 'net-tools':  # On peut aussi faire du spécifique et appeler des ressources directement.
     ensure => present,
   }
 }
+[...]
 ```
+
+#### Utiliser Hiera & Facter
+
+##### Facter
+
+Puppet utilise `facter`. Un binaire qui va permettre d'inventorier le contenu d'une machine.   
+Par exemple, la commande `facter networking.interfaces.enp0s8.ip` renverra l'adresse IP de l'interface enp0s8.  
+
+Si on reprend notre `module_test`, on créer un fichier avec un contenu. On va modifier ce contenu pour faire appel aux facts :
+
+```
+content => "L'ip de la machine est : ${::facts['networking']['interfaces']['enp0s8']['ip']}", # Son contenu
+```
+
+##### Hiera
+
+Maintenant, imaginons qu'on veuille écrire des données différentes suivant le serveur sur lequel on applique la configuration. Au sein du même module et de la même class.
+
+Pour ce faire on va utiliser des données structurées dans un fichier yaml.:
+
+```
+[root@puppet production]# cat data/nodes/serveur01.adsillh.local.yaml 
+
+module_test::contenu: "L'ip de la machine est : %{facts.networking.interfaces.enp0s8.ip}"
+```
+
+Notez bien que la syntax change ! Suivant si on écris dans hiera en .yaml, ou dans nos module en .pp, la syntax n'est pas la même.
 
 
 #### Pxe
 
-Documentation Fedora : https://docs.fedoraproject.org/en-US/fedora/f36/install-guide/advanced/Network_based_Installations/  
-Repo almalinux : https://repo.almalinux.org/almalinux/8.8/BaseOS/x86_64/os/  
-Emplacement des fichiers shim : /boot/efi/EFI/almalinux/
+Un serveur PXE (Preboo Execution Environnement) est, comme son nom l'indique, un serveur permettant d'éxécuter des commandes pendant le préboot. Après le bios.
 
+C'est utile notemment pour déployer des machines par le réseau.   
+Une machine cliente qui est configurée pour boot en pxe va faire une requête DHCP. Le serveur DHCP peut la renvoyer vers un serveur PXE qui lui même l'enverra vers un serveur de déploiement. Dans notre cas, on utilisera un `kickstart`
+
+Dans le cadre d'un TP, on va installer un serveur PXE + Kickstart depuis Puppet.   
+On peut se baser sur la [Documentation Fedora](https://docs.fedoraproject.org/en-US/fedora/f36/install-guide/advanced/Network_based_Installations/)  
+On aura besoin des [Repo almalinux](https://repo.almalinux.org/almalinux/8.8/BaseOS/x86_64/os/) pour récupérer les sources d'installation
+
+/!\ Les fichiers EFI sont déjà disponible sur vos machines dans : /boot/efi/EFI/almalinux/  
+/!\ Il faut bien sur adapter la documentation à nos besoin. La doc est pour Fédora, on installe une almalinux.
 
 #### Configurations
+
+Voici un corrigé.  
+A noter que c'est du "quick & dirty" pour manipuler sur Puppet.  
+Généralement on privilège l'utilisation de templates pour variabiliser au maximum.
 
 ```
 root@puppet production]# tree
@@ -2083,6 +2142,15 @@ class pxe_adsillh (
   }
 }
 ```
+
+##### Fichier kickstart
+
+Un fichier kickstart va contenir toutes les informations dont anaconda à besoin pour installer l'OS. (Souvenez vous, on a déjà parlé rapidement d'anaconda plus tôt)   
+
+Vous avez un exemple à la racine du compte root : `/root/anaconda-ks.cfg`   
+Il peut servir de base pour votre configuration. Beaucoup d'exemple sont également disponible en ligne.  
+On ne s'attardera pas sur le détails dans ce cours.
+
 ```
 [root@puppet production]# cat modules/pxe_adsillh/files/kickstart.conf 
 #version=RHEL8
